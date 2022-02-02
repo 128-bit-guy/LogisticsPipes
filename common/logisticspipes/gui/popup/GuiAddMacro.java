@@ -182,7 +182,10 @@ public class GuiAddMacro extends SubGuiScreen implements IItemSearch {
 			if (ppi > 45 * (pageAll + 1)) {
 				continue;
 			}
+			int oldAmount = itemidStack.getStackSize();
+			itemidStack.setStackSize(1);
 			ItemStack st = itemidStack.unsafeMakeNormalStack();
+			itemidStack.setStackSize(oldAmount);
 			int x = guiLeft + 10 + panelxSize * column;
 			int y = guiTop + 18 + panelySize * row;
 

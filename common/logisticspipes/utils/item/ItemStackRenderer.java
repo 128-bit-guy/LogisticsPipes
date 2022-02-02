@@ -129,7 +129,14 @@ public class ItemStackRenderer {
 			if (ppi > items * (page + 1)) {
 				continue;
 			}
+			int oldAmount = identifierStack.getStackSize();
+			if(itemStackRenderer.displayAmount == DisplayAmount.NEVER) {
+				identifierStack.setStackSize(1);
+			}
 			ItemStack itemstack = identifierStack.unsafeMakeNormalStack();
+			if(itemStackRenderer.displayAmount == DisplayAmount.NEVER) {
+				identifierStack.setStackSize(oldAmount);
+			}
 			int x = left + xSize * column;
 			int y = top + ySize * row + 1;
 
