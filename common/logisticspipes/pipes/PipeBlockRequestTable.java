@@ -8,8 +8,10 @@ import java.util.Map;
 import java.util.Map.Entry;
 import javax.annotation.Nonnull;
 
+import logisticspipes.utils.gui.DummyContainer;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.inventory.ClickType;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.inventory.InventoryCraftResult;
 import net.minecraft.inventory.SlotCrafting;
@@ -477,17 +479,20 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 	@Nonnull
 	public ItemStack getResultForClick() {
 		if (MainProxy.isServer(getWorld())) {
-			ItemStack result = getOutput(true);
-			if (result.isEmpty()) {
-				result = getOutput(false);
-			}
-			if (result.isEmpty()) {
-				return ItemStack.EMPTY;
-			}
-			result.setCount(inv.addCompressed(result, false));
-			if (result.getCount() > 0) {
-				return result;
-			}
+			boolean all = DummyContainer.lastClickType == ClickType.QUICK_MOVE;
+			do {
+				ItemStack result = getOutput(true);
+				if (result.isEmpty()) {
+					result = getOutput(false);
+				}
+				if (result.isEmpty()) {
+					return ItemStack.EMPTY;
+				}
+				result.setCount(inv.addCompressed(result, false));
+				if (result.getCount() > 0) {
+					return result;
+				}
+			} while(all);
 			return ItemStack.EMPTY;
 		}
 		return ItemStack.EMPTY;

@@ -61,6 +61,7 @@ public class DummyContainer extends Container {
 	private List<Slot> transferBottom = new ArrayList<>();
 	private long lastClicked;
 	private long lastDragnDropLockup;
+	public static ClickType lastClickType;
 
 	public DummyContainer(IInventory playerInventory, IInventory dummyInventory) {
 		_playerInventory = playerInventory;
@@ -550,6 +551,7 @@ public class DummyContainer extends Container {
 	@Nonnull
 	@Override
 	public ItemStack slotClick(int slotId, int mouseButton, @Nonnull ClickType shiftMode, @Nonnull EntityPlayer player) {
+		lastClickType = shiftMode;
 		lastClicked = System.currentTimeMillis();
 		if (slotId < 0) {
 			return superSlotClick(slotId, mouseButton, shiftMode, player);
