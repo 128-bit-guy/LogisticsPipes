@@ -73,6 +73,7 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 	private int tick = 0;
 	private int rotation;
 	private boolean init = false;
+	private int sortAllPos;
 
 	private PlayerCollectionList localGuiWatcher = new PlayerCollectionList();
 	public Map<Integer, Pair<IResource, LinkedLogisticsOrderList>> watchedRequests = new HashMap<>();
@@ -83,6 +84,7 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 	public PipeBlockRequestTable(Item item) {
 		super(item);
 		matrix.addListener(this);
+		sortAllPos = -1;
 	}
 
 	@Override
@@ -140,6 +142,10 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 		}
 	}
 
+	public void beginSortAll() {
+		sortAllPos = 0;
+	}
+
 	private boolean isDone(LinkedLogisticsOrderList orders) {
 		boolean isDone = true;
 		for (IOrderInfoProvider order : orders) {
@@ -179,6 +185,21 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 			}
 		} else {
 			delay = 0;
+		}
+		if(sortAllPos != -1) {
+			ItemStack currentStack = inv.getStackInSlot(sortAllPos);
+			IRoutedItem itemToSend = SimpleServiceLocator.routedItemHelper.createNewTravelItem(currentStack);
+			SimpleServiceLocator.logisticsManager.assignDestinationFor(itemToSend, getRouter().getSimpleID(), false);
+			if (itemToSend.getDestinationUUID() != null) {
+				EnumFacing dir = getRouteLayer().getOrientationForItem(itemToSend, null);
+				super.queueRoutedItem(itemToSend, dir.getOpposite());
+				spawnParticle(Particles.OrangeParticle, 4);
+				inv.clearInventorySlotContents(sortAllPos);
+			}
+			++sortAllPos;
+			if(sortAllPos == inv.getSizeInventory()) {
+				sortAllPos = -1;
+			}
 		}
 	}
 
@@ -521,6 +542,7 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 		toSortInv.readFromNBT(par1nbtTagCompound, "toSortInv");
 		diskInv.readFromNBT(par1nbtTagCompound, "diskInv");
 		rotation = par1nbtTagCompound.getInteger("blockRotation");
+		sortAllPos = par1nbtTagCompound.getInteger("sortAllPos");
 		//TODO NPEs on world load
 		//cacheRecipe();
 	}
@@ -533,6 +555,7 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 		toSortInv.writeToNBT(par1nbtTagCompound, "toSortInv");
 		diskInv.writeToNBT(par1nbtTagCompound, "diskInv");
 		par1nbtTagCompound.setInteger("blockRotation", rotation);
+		par1nbtTagCompound.setInteger("sortAllPos", sortAllPos);
 	}
 
 	@Override

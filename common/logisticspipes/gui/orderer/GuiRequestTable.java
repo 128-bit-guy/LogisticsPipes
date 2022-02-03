@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
+import logisticspipes.network.packets.block.SortAllPacket;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -85,6 +86,7 @@ public class GuiRequestTable extends LogisticsBaseGuiScreen implements IItemSear
 	private IChainAddList<GuiButton> moveWhileSmall = new ChainAddArrayList<>();
 	private IChainAddList<GuiButton> hideWhileSmall = new ChainAddArrayList<>();
 	private GuiButton hideShowButton;
+	private GuiButton sortAllButton;
 
 	public GuiRequestTable(EntityPlayer entityPlayer, PipeBlockRequestTable table) {
 		super(410, 240, 0, 0);
@@ -161,6 +163,8 @@ public class GuiRequestTable extends LogisticsBaseGuiScreen implements IItemSear
 
 		(sycleButtons[0] = addButton(new SmallGuiButton(21, guiLeft + 124, guiTop + 30, 15, 10, "/\\"))).visible = false;
 		(sycleButtons[1] = addButton(new SmallGuiButton(22, guiLeft + 124, guiTop + 42, 15, 10, "\\/"))).visible = false;
+
+		sortAllButton = addButton(hideWhileSmall.addChain(new SmallGuiButton(222, guiLeft + 185, guiTop + 80, 15, 10, "X")));
 
 		if (search == null) {
 			search = new InputBar(fontRenderer, this, guiLeft + 205, bottom - 78, 200, 15);
@@ -540,6 +544,8 @@ public class GuiRequestTable extends LogisticsBaseGuiScreen implements IItemSear
 				MainProxy.sendPacketToServer(PacketHandler.getPacket(RequestSubmitListPacket.class).setIdentList(list).setTilePos(_table.container));
 				refreshItems();
 			}
+		} else if(guibutton.id == 222) {
+			MainProxy.sendPacketToServer(PacketHandler.getPacket(SortAllPacket.class).setTilePos(_table.container));
 		}
 	}
 
