@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<component>
+  <configuration default="false" factoryName="Application" name="runServerTest" singleton="false" type="Application">
+    <option name="MAIN_CLASS_NAME" value="net.minecraftforge.legacydev.MainServer"/>
+    <option name="VM_PARAMETERS" value="-Dfml.coreMods.load=logisticspipes.asm.LogisticsPipesCoreLoader -Dlogisticspipes.test=true -ea"/>
+    <option name="PROGRAM_PARAMETERS" value="--tweakClass net.minecraftforge.fml.common.launcher.FMLServerTweaker nogui"/>
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$\run-server-test"/>
+    <module name="LogisticsPipes.main"/>
+    <envs>
+      <env name="MCP_TO_SRG" value="$PROJECT_DIR$\build/createSrgToMcp/output.srg"/>
+      <env name="MOD_CLASSES" value="logisticspipes%%$PROJECT_DIR$\build\resources\api;logisticspipes%%$PROJECT_DIR$\build\classes\java\api;logisticspipes%%$PROJECT_DIR$\build\classes\kotlin\api;logisticspipes%%$PROJECT_DIR$\build\resources\main;logisticspipes%%$PROJECT_DIR$\build\classes\java\main;logisticspipes%%$PROJECT_DIR$\build\classes\kotlin\main;logisticspipes%%$PROJECT_DIR$\build\resources\test;logisticspipes%%$PROJECT_DIR$\build\classes\java\test;logisticspipes%%$PROJECT_DIR$\build\classes\kotlin\test"/>
+      <env name="mainClass" value="net.minecraft.launchwrapper.Launch"/>
+      <env name="target" value="server"/>
+    </envs>
+    <method v="2">
+      <option enabled="true" name="Make"/>
+      <option enabled="true" externalProjectPath="$PROJECT_DIR$" name="Gradle.BeforeRunTask" tasks=":prepareRunServerTest"/>
+    </method>
+  </configuration>
+</component>

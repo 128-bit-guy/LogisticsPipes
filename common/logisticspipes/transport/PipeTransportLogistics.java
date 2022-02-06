@@ -299,6 +299,8 @@ public class PipeTransportLogistics {
 				iter.remove();
 			} else if (!canPipeConnect(tile, dir)) {
 				iter.remove();
+			} else if(!container.canConnect(tile, dir, false)) {
+				iter.remove();
 			} else if (tile instanceof LogisticsTileGenericPipe && !((LogisticsTileGenericPipe) tile).canConnect(container, dir.getOpposite(), false)) {
 				iter.remove();
 			}
