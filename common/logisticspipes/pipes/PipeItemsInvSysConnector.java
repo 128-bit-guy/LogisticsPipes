@@ -19,7 +19,9 @@ import javax.annotation.Nullable;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 
@@ -56,6 +58,7 @@ import logisticspipes.utils.item.ItemIdentifierStack;
 import logisticspipes.utils.transactor.ITransactor;
 import logisticspipes.utils.tuples.Pair;
 import logisticspipes.utils.tuples.Triplet;
+import net.minecraftforge.common.util.Constants;
 import network.rs485.logisticspipes.connection.LPNeighborTileEntityKt;
 import network.rs485.logisticspipes.world.WorldCoordinatesWrapper;
 
@@ -270,6 +273,36 @@ public class PipeItemsInvSysConnector extends CoreRoutedPipe implements IChannel
 		if (connectedChannel != null) {
 			nbttagcompound.setString("connectedChannel", connectedChannel.toString());
 		}
+		NBTTagList list = new NBTTagList();
+		for(Map.Entry<ItemIdentifier, List<ItemRoutingInformation>> x : itemsOnRoute.entrySet()) {
+			list.appendTag(writeItemsOnRouteEntry(x));
+		}
+		nbttagcompound.setTag("itemsOnRoute", list);
+	}
+
+	private NBTTagCompound writeItemsOnRouteEntry(Map.Entry<ItemIdentifier, List<ItemRoutingInformation>> entry) {
+		NBTTagCompound tag = new NBTTagCompound();
+		tag.setTag("item", entry.getKey().makeNormalStack(1).writeToNBT(new NBTTagCompound()));
+		NBTTagList routingInfos = new NBTTagList();
+		for(ItemRoutingInformation info : entry.getValue()) {
+			NBTTagCompound infoTag = new NBTTagCompound();
+			info.writeToNBT(infoTag);
+			routingInfos.appendTag(infoTag);
+		}
+		tag.setTag("routingInfos", routingInfos);
+		return tag;
+	}
+
+	private void readItemsOnRouteEntry(NBTTagCompound compound) {
+		ItemIdentifier itemIdentifier = ItemIdentifier.get(new ItemStack(compound.getCompoundTag("item")));
+		NBTTagList routingInfos = compound.getTagList("routingInfos", Constants.NBT.TAG_COMPOUND);
+		List<ItemRoutingInformation> infos = new ArrayList<>();
+		for(NBTBase base : routingInfos) {
+			ItemRoutingInformation info = new ItemRoutingInformation();
+			info.readFromNBT((NBTTagCompound) base);
+			infos.add(info);
+		}
+		itemsOnRoute.put(itemIdentifier, infos);
 	}
 
 	@Override
@@ -280,6 +313,11 @@ public class PipeItemsInvSysConnector extends CoreRoutedPipe implements IChannel
 			connectedChannel = UUID.fromString(nbttagcompound.getString("connectedChannel"));
 		} else {
 			connectedChannel = null;
+		}
+		itemsOnRoute.clear();
+		NBTTagList list = nbttagcompound.getTagList("itemsOnRoute", Constants.NBT.TAG_COMPOUND);
+		for(NBTBase base : list) {
+			readItemsOnRouteEntry((NBTTagCompound) base);
 		}
 	}
 

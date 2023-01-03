@@ -1,16 +1,31 @@
 package logisticspipes.asm;
 
+import java.lang.reflect.Field;
+import java.util.EnumMap;
 import java.util.Map;
 
+import com.google.common.collect.Maps;
 import net.minecraft.launchwrapper.Launch;
 
+import net.minecraftforge.fml.common.network.FMLEmbeddedChannel;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 
 import lombok.Getter;
+import net.minecraftforge.fml.relauncher.Side;
 
 //@IFMLLoadingPlugin.SortingIndex(1001) TODO: For next MC update. Changing this now, will change ASM check sums as well.
 public class LogisticsPipesCoreLoader implements IFMLLoadingPlugin {
 
+//	static {
+//		try {
+//			Field field = NetworkRegistry.class.getDeclaredField("channels");
+//			field.setAccessible(true);
+//			((EnumMap<Side, Map<String, FMLEmbeddedChannel>>)field.get(NetworkRegistry.INSTANCE)).put((Side) Side.class.getField("BUKKIT").get(null), Maps.newConcurrentMap());
+//		} catch (Throwable thr) {
+//
+//		}
+//	}
 	@Getter
 	private static boolean coremodLoaded = false;
 	private static boolean developmentEnvironment = false;
