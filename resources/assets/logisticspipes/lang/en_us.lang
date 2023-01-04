@@ -426,6 +426,7 @@ gui.routingstats.RoutingTableSize=RoutingTableSize
 gui.routingstats.exit=Press <ESC> to exit
 
 gui.satellite.SatelliteName=Satellite Name
+gui.satellite.DestinationName=Destination Name
 gui.satellite.naming_result.success=Success
 gui.satellite.naming_result.duplicate_name=Name already used.
 gui.satellite.naming_result.blank_name=Name can't be blank.
@@ -584,3 +585,8 @@ top.logisticspipes.pipe.firewall.blocked=$REDblocked$WHITE
 top.logisticspipes.pipe.unrouted.too_many_connections=Unrouted pipes $REDshould not$RESET have more than 2 connections!
 
 top.logisticspipes.pipe.chassis.no_modules=$REDNo modules installed.
+
+gui.popup.selectdestination.title=Select Destination Pipe
+gui.popup.selectdestination.select=Select
+gui.popup.selectdestination.exit=Exit
+gui.popup.selectdestination.unset=Unset

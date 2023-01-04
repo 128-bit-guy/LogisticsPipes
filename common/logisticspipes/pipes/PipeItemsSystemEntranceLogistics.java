@@ -19,25 +19,11 @@ import logisticspipes.utils.item.ItemIdentifierInventory;
 
 public class PipeItemsSystemEntranceLogistics extends CoreRoutedPipe {
 
-	public ItemIdentifierInventory inv = new ItemIdentifierInventory(1, "Freq Slot", 1);
+	public UUID destination;
 
 	public PipeItemsSystemEntranceLogistics(Item item) {
 		super(new EntrencsTransport(), item);
 		((EntrencsTransport) transport).pipe = this;
-	}
-
-	public UUID getLocalFreqUUID() {
-		if (inv.getStackInSlot(0) == null) {
-			return null;
-		}
-		if (!inv.getStackInSlot(0).hasTagCompound()) {
-			return null;
-		}
-		if (!inv.getStackInSlot(0).getTagCompound().hasKey("UUID")) {
-			return null;
-		}
-		spawnParticle(Particles.WhiteParticle, 2);
-		return UUID.fromString(inv.getStackInSlot(0).getTagCompound().getString("UUID"));
 	}
 
 	@Override
@@ -58,31 +44,21 @@ public class PipeItemsSystemEntranceLogistics extends CoreRoutedPipe {
 	@Override
 	public void writeToNBT(NBTTagCompound nbttagcompound) {
 		super.writeToNBT(nbttagcompound);
-		inv.writeToNBT(nbttagcompound);
+		if(destination != null) {
+			nbttagcompound.setString("destination", destination.toString());
+		}
 	}
 
 	@Override
 	public void readFromNBT(NBTTagCompound nbttagcompound) {
 		super.readFromNBT(nbttagcompound);
-		inv.readFromNBT(nbttagcompound);
-	}
-
-	@Override
-	public void onAllowedRemoval() {
-		dropFreqCard();
-	}
-
-	private void dropFreqCard() {
-		if (inv.getStackInSlot(0) == null) {
-			return;
+		if(nbttagcompound.hasKey("destination")) {
+			destination = UUID.fromString(nbttagcompound.getString("destination"));
 		}
-		EntityItem item = new EntityItem(getWorld(), getX(), getY(), getZ(), inv.getStackInSlot(0));
-		getWorld().spawnEntity(item);
-		inv.clearInventorySlotContents(0);
 	}
 
 	@Override
 	public void onWrenchClicked(EntityPlayer entityplayer) {
-		entityplayer.openGui(LogisticsPipes.instance, GuiIDs.GUI_Freq_Card_ID, getWorld(), getX(), getY(), getZ());
+		entityplayer.openGui(LogisticsPipes.instance, GuiIDs.GUI_Select_Destination_ID, getWorld(), getX(), getY(), getZ());
 	}
 }

@@ -10,6 +10,7 @@ package logisticspipes.gui;
 import java.io.IOException;
 import javax.annotation.Nonnull;
 
+import logisticspipes.pipes.PipeItemsSystemDestinationLogistics;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.Container;
@@ -81,7 +82,8 @@ public class GuiSatellitePipe extends LogisticsBaseGuiScreen {
 	@Override
 	protected void drawGuiContainerForegroundLayer(int par1, int par2) {
 		super.drawGuiContainerForegroundLayer(par1, par2);
-		drawCenteredString(TextUtil.translate("gui.satellite.SatelliteName"), 59, 7, 0x404040);
+		String title = (satellitePipe instanceof PipeItemsSystemDestinationLogistics)? "gui.satellite.DestinationName" : "gui.satellite.SatelliteName";
+		drawCenteredString(TextUtil.translate(title), 59, 7, 0x404040);
 		String name = TextUtil.getTrimmedString(satellitePipe.getSatellitePipeName(), 100, mc.fontRenderer, "...");
 		int yOffset = 0;
 		if (!response.isEmpty()) {

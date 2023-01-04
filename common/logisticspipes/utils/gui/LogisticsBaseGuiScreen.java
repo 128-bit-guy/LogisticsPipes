@@ -76,7 +76,7 @@ public abstract class LogisticsBaseGuiScreen extends GuiContainer implements ISu
 	protected final int xCenterOffset;
 	protected final int yCenterOffset;
 
-	private SubGuiScreen subGui;
+	protected SubGuiScreen subGui;
 	protected List<IRenderSlot> slots = new ArrayList<>();
 	protected GuiExtentionController extentionControllerLeft = new GuiExtentionController(GuiSide.LEFT);
 	protected GuiExtentionController extentionControllerRight = new GuiExtentionController(GuiSide.RIGHT);

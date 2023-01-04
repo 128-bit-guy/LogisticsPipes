@@ -18,21 +18,17 @@ public class EntrencsTransport extends PipeTransportLogistics {
 	@Override
 	public RoutingResult resolveDestination(LPTravelingItemServer data) {
 		if (data.getDestination() < 0 || data.getArrived()) {
-			if (pipe.getLocalFreqUUID() != null) {
-				if (pipe.useEnergy(5)) {
-					for (ExitRoute router : pipe.getRouter().getIRoutersByCost()) {
-						if (!router.containsFlag(PipeRoutingConnectionType.canRouteTo)) {
-							continue;
-						}
-						CoreRoutedPipe lPipe = router.destination.getPipe();
-						if (lPipe instanceof PipeItemsSystemDestinationLogistics) {
-							PipeItemsSystemDestinationLogistics dPipe = (PipeItemsSystemDestinationLogistics) lPipe;
-							if (dPipe.getTargetUUID() != null) {
-								if (dPipe.getTargetUUID().equals(pipe.getLocalFreqUUID())) {
-									data.setDestination(dPipe.getRouter().getSimpleID());
-									data.setArrived(false);
-								}
-							}
+			if (pipe.useEnergy(5)) {
+				for (ExitRoute router : pipe.getRouter().getIRoutersByCost()) {
+					if (!router.containsFlag(PipeRoutingConnectionType.canRouteTo)) {
+						continue;
+					}
+					CoreRoutedPipe lPipe = router.destination.getPipe();
+					if (lPipe instanceof PipeItemsSystemDestinationLogistics) {
+						PipeItemsSystemDestinationLogistics dPipe = (PipeItemsSystemDestinationLogistics) lPipe;
+						if (dPipe.getRouter().getId().equals(pipe.destination)) {
+							data.setDestination(dPipe.getRouter().getSimpleID());
+							data.setArrived(false);
 						}
 					}
 				}

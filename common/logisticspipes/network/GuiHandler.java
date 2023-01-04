@@ -1,5 +1,7 @@
 package logisticspipes.network;
 
+import logisticspipes.gui.*;
+import logisticspipes.network.packets.pipe.SetDestinationPacket;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.tileentity.TileEntity;
@@ -9,13 +11,6 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.IGuiHandler;
 
 import logisticspipes.LPItems;
-import logisticspipes.gui.GuiFirewall;
-import logisticspipes.gui.GuiFluidBasic;
-import logisticspipes.gui.GuiFluidSupplierMk2Pipe;
-import logisticspipes.gui.GuiFluidSupplierPipe;
-import logisticspipes.gui.GuiFluidTerminus;
-import logisticspipes.gui.GuiFreqCardContent;
-import logisticspipes.gui.GuiSatellitePipe;
 import logisticspipes.gui.hud.GuiHUDSettings;
 import logisticspipes.gui.orderer.FluidGuiOrderer;
 import logisticspipes.gui.orderer.GuiRequestTable;
@@ -136,11 +131,11 @@ public class GuiHandler implements IGuiHandler {
 						return null;
 					}
 					IInventory inv = null;
-					if (pipe.pipe instanceof PipeItemsSystemEntranceLogistics) {
-						inv = ((PipeItemsSystemEntranceLogistics) pipe.pipe).inv;
-					} else if (pipe.pipe instanceof PipeItemsSystemDestinationLogistics) {
-						inv = ((PipeItemsSystemDestinationLogistics) pipe.pipe).inv;
-					}
+//					if (pipe.pipe instanceof PipeItemsSystemEntranceLogistics) {
+//						inv = ((PipeItemsSystemEntranceLogistics) pipe.pipe).inv;
+//					} else if (pipe.pipe instanceof PipeItemsSystemDestinationLogistics) {
+//						inv = ((PipeItemsSystemDestinationLogistics) pipe.pipe).inv;
+//					}
 
 					dummy = new DummyContainer(player.inventory, inv);
 
@@ -240,7 +235,8 @@ public class GuiHandler implements IGuiHandler {
 					dummy.addNormalSlot(0, ((PipeBlockRequestTable) pipe.pipe).diskInv, 0, 0);
 					dummy.addNormalSlotsForPlayerInventory(0, 0);
 					return dummy;
-
+				case GuiIDs.GUI_Select_Destination_ID:
+					return new DummyContainer(player, null);
 				default:
 					break;
 			}
@@ -301,11 +297,11 @@ public class GuiHandler implements IGuiHandler {
 						return null;
 					}
 					IInventory inv = null;
-					if (pipe.pipe instanceof PipeItemsSystemEntranceLogistics) {
-						inv = ((PipeItemsSystemEntranceLogistics) pipe.pipe).inv;
-					} else if (pipe.pipe instanceof PipeItemsSystemDestinationLogistics) {
-						inv = ((PipeItemsSystemDestinationLogistics) pipe.pipe).inv;
-					}
+//					if (pipe.pipe instanceof PipeItemsSystemEntranceLogistics) {
+//						inv = ((PipeItemsSystemEntranceLogistics) pipe.pipe).inv;
+//					} else if (pipe.pipe instanceof PipeItemsSystemDestinationLogistics) {
+//						inv = ((PipeItemsSystemDestinationLogistics) pipe.pipe).inv;
+//					}
 					return new GuiFreqCardContent(player, inv);
 
 				case GuiIDs.GUI_HUD_Settings:
@@ -334,7 +330,12 @@ public class GuiHandler implements IGuiHandler {
 						return null;
 					}
 					return new GuiRequestTable(player, ((PipeBlockRequestTable) pipe.pipe));
-
+				case GuiIDs.GUI_Select_Destination_ID:
+					if(pipe == null || !(pipe.pipe instanceof PipeItemsSystemEntranceLogistics)) {
+						return null;
+					}
+					LogisticsTileGenericPipe finalPipe = pipe;
+					return new GuiSelectDestination(pipe.getPos(), false, uuid -> MainProxy.sendPacketToServer(PacketHandler.getPacket(SetDestinationPacket.class).setDestination(uuid).setBlockPos(finalPipe.getPos())));
 				default:
 					break;
 			}

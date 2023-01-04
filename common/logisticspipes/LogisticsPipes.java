@@ -661,6 +661,7 @@ public class LogisticsPipes {
 		QueuedTasks.clearAllTasks();
 		HudUpdateTick.clearUpdateFlags();
 		PipeItemsSatelliteLogistics.cleanup();
+		PipeItemsSystemDestinationLogistics.cleanup();
 		PipeFluidSatellite.cleanup();
 		ServerRouter.cleanup();
 		if (event.getSide().equals(Side.CLIENT)) {
