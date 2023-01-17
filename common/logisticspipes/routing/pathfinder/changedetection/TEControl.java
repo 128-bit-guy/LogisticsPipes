@@ -2,6 +2,7 @@ package logisticspipes.routing.pathfinder.changedetection;
 
 import java.util.ArrayList;
 
+import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.math.BlockPos;
@@ -23,6 +24,9 @@ import network.rs485.logisticspipes.world.DoubleCoordinates;
 public class TEControl {
 
 	public static void validate(final TileEntity tile) {
+//		if (tile.getClass().getName().contains("")) {
+//			return;
+//		}
 		final World world = tile.getWorld();
 		if (!MainProxy.isServer(world)) {
 			return;
@@ -71,6 +75,9 @@ public class TEControl {
 	}
 
 	public static void invalidate(final TileEntity tile) {
+//		if (tile.getClass().getName().contains("")) {
+//			return;
+//		}
 		final World world = tile.getWorld();
 		if (!MainProxy.isServer(world)) {
 			return;
@@ -101,7 +108,14 @@ public class TEControl {
 		}
 	}
 
+	private static boolean isBlockCBMultipart(Block block) {
+		return block.getClass().getName().contains("codechicken.multipart");
+	}
+
 	public static void handleBlockUpdate(final World world, final LPWorldInfo info, BlockPos blockPos) {
+		if(world.getBlockState(blockPos).getBlock().getClass().getName().contains("codechicken")) {
+			return;
+		}
 		if (info.isSkipBlockUpdateForWorld()) {
 			return;
 		}
@@ -113,6 +127,9 @@ public class TEControl {
 			return;
 		}
 		if (!pos.blockExists(world)) {
+			return;
+		}
+		if(isBlockCBMultipart(pos.getBlock(world))) {
 			return;
 		}
 		final TileEntity tile = pos.getTileEntity(world);

@@ -37,10 +37,7 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AnnotationNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldNode;
-import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.*;
 
 import logisticspipes.LogisticsPipes;
 import logisticspipes.asm.mcmp.ClassBlockMultipartContainerHandler;
@@ -493,34 +490,42 @@ public class LogisticsClassTransformer implements IClassTransformer {
 		node.visitField(Opcodes.ACC_PRIVATE, "informationObjectLogisticsPipes", "Llogisticspipes/asm/te/LPTileEntityObject;", null, null);
 		for (MethodNode m : node.methods) {
 			if (m.name.equals("validate") || m.name.equals("func_145829_t") || (m.name.equals("A") && m.desc.equals("()V"))) {
-				MethodNode mv = new MethodNode(Opcodes.ASM4, m.access, m.name, m.desc, m.signature, m.exceptions.toArray(new String[0])) {
-
-					@Override
-					public void visitCode() {
-						super.visitCode();
-						Label l0 = new Label();
-						visitLabel(l0);
-						visitVarInsn(Opcodes.ALOAD, 0);
-						this.visitMethodInsn(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "validate", "(Lnet/minecraft/tileentity/TileEntity;)V");
-					}
-				};
-				m.accept(mv);
-				node.methods.set(node.methods.indexOf(m), mv);
+				InsnList list = new InsnList();
+				list.add(new VarInsnNode(Opcodes.ALOAD, 0));
+				list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "validate", "(Lnet/minecraft/tileentity/TileEntity;)V", false));
+				m.instructions.insertBefore(m.instructions.getFirst(), list);
+//				MethodNode mv = new MethodNode(Opcodes.ASM4, m.access, m.name, m.desc, m.signature, m.exceptions.toArray(new String[0])) {
+//
+//					@Override
+//					public void visitCode() {
+//						super.visitCode();
+//						Label l0 = new Label();
+//						visitLabel(l0);
+//						visitVarInsn(Opcodes.ALOAD, 0);
+//						this.visitMethodInsn(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "validate", "(Lnet/minecraft/tileentity/TileEntity;)V");
+//					}
+//				};
+//				m.accept(mv);
+//				node.methods.set(node.methods.indexOf(m), mv);
 			}
 			if (m.name.equals("invalidate") || m.name.equals("func_145843_s") || (m.name.equals("z") && m.desc.equals("()V"))) {
-				MethodNode mv = new MethodNode(Opcodes.ASM4, m.access, m.name, m.desc, m.signature, m.exceptions.toArray(new String[0])) {
-
-					@Override
-					public void visitCode() {
-						super.visitCode();
-						Label l0 = new Label();
-						visitLabel(l0);
-						visitVarInsn(Opcodes.ALOAD, 0);
-						this.visitMethodInsn(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "invalidate", "(Lnet/minecraft/tileentity/TileEntity;)V");
-					}
-				};
-				m.accept(mv);
-				node.methods.set(node.methods.indexOf(m), mv);
+				InsnList list = new InsnList();
+				list.add(new VarInsnNode(Opcodes.ALOAD, 0));
+				list.add(new MethodInsnNode(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "invalidate", "(Lnet/minecraft/tileentity/TileEntity;)V", false));
+				m.instructions.insertBefore(m.instructions.getFirst(), list);
+//				MethodNode mv = new MethodNode(Opcodes.ASM4, m.access, m.name, m.desc, m.signature, m.exceptions.toArray(new String[0])) {
+//
+//					@Override
+//					public void visitCode() {
+//						super.visitCode();
+//						Label l0 = new Label();
+//						visitLabel(l0);
+//						visitVarInsn(Opcodes.ALOAD, 0);
+//						this.visitMethodInsn(Opcodes.INVOKESTATIC, "logisticspipes/asm/LogisticsASMHookClass", "invalidate", "(Lnet/minecraft/tileentity/TileEntity;)V");
+//					}
+//				};
+//				m.accept(mv);
+//				node.methods.set(node.methods.indexOf(m), mv);
 			}
 		}
 		MethodVisitor mv;
