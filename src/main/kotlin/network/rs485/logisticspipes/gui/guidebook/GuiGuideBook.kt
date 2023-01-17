@@ -37,28 +37,29 @@
 
 package network.rs485.logisticspipes.gui.guidebook
 
-import logisticspipes.LPConstants
 import logisticspipes.LPItems
 import logisticspipes.LogisticsPipes
+import logisticspipes.modplugins.jei.JEIPluginLoader
+import logisticspipes.utils.Color
 import logisticspipes.utils.MinecraftColor
+import logisticspipes.utils.gui.SimpleGraphics
 import net.minecraft.client.Minecraft
 import net.minecraft.client.gui.GuiButton
 import net.minecraft.client.gui.GuiConfirmOpenLink
 import net.minecraft.client.gui.GuiScreen
-import net.minecraft.client.renderer.BufferBuilder
 import net.minecraft.client.renderer.GlStateManager
-import net.minecraft.client.renderer.Tessellator
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats
-import net.minecraft.util.ResourceLocation
-import network.rs485.logisticspipes.gui.LPFontRenderer
+import net.minecraft.item.ItemStack
+import network.rs485.logisticspipes.gui.HorizontalAlignment
+import network.rs485.logisticspipes.gui.LPGuiDrawer
+import network.rs485.logisticspipes.gui.VerticalAlignment
+import network.rs485.logisticspipes.gui.widget.Tooltipped
 import network.rs485.logisticspipes.guidebook.BookContents
 import network.rs485.logisticspipes.guidebook.BookContents.MAIN_MENU_FILE
 import network.rs485.logisticspipes.guidebook.DebugPage
 import network.rs485.logisticspipes.guidebook.ItemGuideBook
-import network.rs485.logisticspipes.util.*
+import network.rs485.logisticspipes.util.cycleMinecraftColorId
 import network.rs485.logisticspipes.util.math.Rectangle
 import network.rs485.markdown.TextFormat
-import network.rs485.markdown.defaultDrawableState
 import org.lwjgl.input.Mouse
 import org.lwjgl.opengl.GL11
 import java.net.URI
@@ -67,23 +68,12 @@ import java.util.*
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 
 object GuideBookConstants {
-    val guiBookTexture = ResourceLocation(LPConstants.LP_MOD_ID, "textures/gui/guide_book.png")
-
-    // Texture
-    private const val ATLAS_WIDTH = 256.0
-    private const val ATLAS_HEIGHT = 256.0
-    const val ATLAS_WIDTH_SCALE = 1 / ATLAS_WIDTH
-    const val ATLAS_HEIGHT_SCALE = 1 / ATLAS_HEIGHT
-
     // Z Levels
-    const val Z_TOOLTIP = 32.0f // Tooltip z
-    const val Z_TITLE_BUTTONS = 31.0f // Title and Buttons Z
-    const val Z_FRAME = 30.0f // Frame Z
-    const val Z_TEXT = 5.0f // Text/Information Z
-    const val Z_BACKGROUND = 0.0f // Background Z
+    const val Z_TOOLTIP = 500.0f // Tooltip z
 
     // Debug constant
     const val DRAW_BODY_WIREFRAME = false
@@ -97,28 +87,24 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
     - Crafting recipes?
     - Use translatable names or block/item identifiers as text?
     - DrawableListParagraph
-    - Scroll Wheel functionality
+    - Add configurability to images
+    - Create tooltip object and render it independently of the Drawable it's attached to
+    - Create a variety of tooltips with configurable style and information.
+    - Improve font renderer to allow for more fonts.
+    - Add config screen for the book to change font/font size.
+    - Add option to enable or disable text justification.
      */
 
     // Gui Frame Constants
     private val guiBorderThickness = 16
     private val guiShadowThickness = 6
     private val guiSeparatorThickness = 6
-    private val guiBorderWithShadowThickness = guiBorderThickness + guiShadowThickness
-    private val guiAtlasSize = 64
-    private val innerFrameTexture = Rectangle(guiBorderWithShadowThickness, guiBorderWithShadowThickness, guiAtlasSize - (guiBorderWithShadowThickness * 2), guiAtlasSize - (guiBorderWithShadowThickness * 2))
-    private val outerFrameTexture = Rectangle(0, 0, guiAtlasSize, guiAtlasSize)
-    private val sliderSeparatorTexture = Rectangle(96, 65, 16, 30)
-    private val backgroundFrameTexture = Rectangle(64, 0, 32, 32)
 
     // Slider
     private val guiSliderWidth = 12
-    private val guiSliderHeight = 15
 
     // Tabs
     private val guiTabWidth = 24
-    private val guiTabHeight = 24
-    private val guiFullTabHeight = 32
     private val maxTabs = 100
 
     // Gui constrains
@@ -160,6 +146,10 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
                 LogisticsPipes.log.warn("Could not parse link $webLink in GuiGuideBook", error)
             }
         }
+
+        fun onItemLinkClick(stack: ItemStack) {
+            JEIPluginLoader.showRecipe(stack)
+        }
     }
 
     init {
@@ -182,13 +172,17 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
     private fun calculateGuiConstraints() {
         val marginRatio = 1.0 / 8.0
         val sizeRatio = 6.0 / 8.0
-        outerGui.setPos(floor(marginRatio * width).toInt(), floor(marginRatio * height).toInt()).setSize((sizeRatio * width).toInt(), (sizeRatio * height).toInt())
-        innerGui.setPos(outerGui.x0 + guiBorderThickness, outerGui.y0 + guiBorderThickness).setSize(outerGui.roundedWidth - 2 * guiBorderThickness, outerGui.roundedHeight - 2 * guiBorderThickness)
-        sliderSeparator.setPos(innerGui.x1 - guiSliderWidth - guiSeparatorThickness - guiShadowThickness, innerGui.y0).setSize(2 * guiShadowThickness + guiSeparatorThickness, innerGui.roundedHeight)
+        outerGui.setPos(floor(marginRatio * width).toInt(), floor(marginRatio * height).toInt())
+            .setSize((sizeRatio * width).toInt(), (sizeRatio * height).toInt())
+        innerGui.setPos(outerGui.x0 + guiBorderThickness, outerGui.y0 + guiBorderThickness)
+            .setSize(outerGui.roundedWidth - 2 * guiBorderThickness, outerGui.roundedHeight - 2 * guiBorderThickness)
+        sliderSeparator.setPos(innerGui.x1 - guiSliderWidth - guiSeparatorThickness - guiShadowThickness, innerGui.y0 - 1)
+            .setSize(2 * guiShadowThickness + guiSeparatorThickness, innerGui.roundedHeight + 2)
         guiSliderX = innerGui.roundedRight - guiSliderWidth
         guiSliderY0 = innerGui.roundedTop
         guiSliderY1 = innerGui.roundedBottom
-        visibleArea.setPos(innerGui.x0 + guiShadowThickness, innerGui.y0).setSize(innerGui.roundedWidth - sliderSeparator.roundedWidth - guiSliderWidth, innerGui.roundedHeight)
+        visibleArea.setPos(innerGui.x0 + guiShadowThickness, innerGui.y0)
+            .setSize(innerGui.roundedWidth - sliderSeparator.roundedWidth - guiSliderWidth, innerGui.roundedHeight)
         state.currentPage.setDrawablesPosition(visibleArea)
         updateButtonVisibility()
     }
@@ -273,11 +267,40 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
 
     override fun drawScreen(mouseX: Int, mouseY: Int, partialTicks: Float) {
         drawDefaultBackground()
+        GlStateManager.enableDepth()
+        GlStateManager.depthFunc(GL11.GL_ALWAYS)
+        SimpleGraphics.drawGradientRect(0, 0, width, height, Color.BLANK, Color.BLANK, 450.0)
+
+        LPGuiDrawer.drawGuideBookBackground(outerGui)
+
+        GlStateManager.depthFunc(GL11.GL_LEQUAL)
+        state.currentPage.run {
+            updateScrollPosition(visibleArea, currentProgress)
+            draw(visibleArea, mouseX.toFloat(), mouseY.toFloat(), partialTicks)
+        }
+        GlStateManager.depthFunc(GL11.GL_ALWAYS)
+        tabButtons.forEach { it.drawButton(mc, mouseX, mouseY, partialTicks) }
+        LPGuiDrawer.drawGuideBookFrame(outerGui, sliderSeparator)
         buttonList.forEach { it.drawButton(mc, mouseX, mouseY, partialTicks) }
-        state.currentPage.updateScrollPosition(visibleArea, currentProgress)
-        state.currentPage.draw(visibleArea, mouseX, mouseY, partialTicks)
-        drawGui()
-        if (tabButtons.isNotEmpty()) tabButtons.forEach { it.drawButton(mc, mouseX, mouseY, partialTicks) }
+
+        (buttonList + tabButtons).reversed().forEach { it.drawButtonForegroundLayer(mouseX, mouseY) }
+        GlStateManager.depthFunc(GL11.GL_LEQUAL)
+
+        if (visibleArea.contains(mouseX, mouseY)) {
+            val hovered = state.currentPage.getHovered(mouseX.toFloat(), mouseY.toFloat())
+            hovered?.also {
+                if (it is Tooltipped) {
+                    LPGuiDrawer.drawTextTooltip(
+                        text = it.getTooltipText(),
+                        x = mouseX,
+                        y = min(mouseY - 5f, visibleArea.bottom).roundToInt(),
+                        z = GuideBookConstants.Z_TOOLTIP,
+                        horizontalAlign = HorizontalAlignment.CENTER,
+                        verticalAlign = VerticalAlignment.BOTTOM,
+                    )
+                }
+            }
+        }
         drawTitle()
     }
 
@@ -293,6 +316,7 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
                         actionPerformed(button)
                         return
                     }
+
                     1 -> {
                         rightClick(button)
                         return
@@ -301,17 +325,30 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
             }
         }
         if (visibleArea.contains(mouseX, mouseY)) {
-            state.currentPage.mouseClicked(mouseX, mouseY, visibleArea, actionListener)
+            state.currentPage.mouseClicked(mouseX.toFloat(), mouseY.toFloat(), mouseButton, visibleArea, actionListener)
         }
     }
 
     override fun updateScreen() {
+        if (currentProgress == state.currentPage.progress) {
+            return
+        }
         val progressDiff = currentProgress - state.currentPage.progress
         val speedModifier = 0.5f
-        if (progressDiff < 0.05f) {
-            currentProgress = min(currentProgress - (progressDiff * speedModifier), state.currentPage.progress)
-        } else if (progressDiff > 0.05f) {
-            currentProgress = max(currentProgress - (progressDiff * speedModifier), state.currentPage.progress)
+        currentProgress = when {
+            progressDiff < 0.0025f && progressDiff > -0.0025f -> {
+                state.currentPage.progress
+            }
+
+            progressDiff < 0.0025f -> {
+                min(currentProgress - (progressDiff * speedModifier), state.currentPage.progress)
+            }
+
+            progressDiff > -0.0025f -> {
+                max(currentProgress - (progressDiff * speedModifier), state.currentPage.progress)
+            }
+
+            else -> currentProgress
         }
     }
 
@@ -320,7 +357,7 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
         if (state.currentPage.getExtraHeight(visibleArea) > 0) {
             val mouseDWheel = Mouse.getDWheel() / -120
             if (mouseDWheel != 0) {
-                slider.changeProgress(mouseDWheel * lpFontRenderer.getFontHeight(1.0f))
+                slider.changeProgress(mouseDWheel * LPGuiDrawer.lpFontRenderer.getFontHeight(1.0f))
             }
         }
     }
@@ -330,9 +367,11 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
             home -> if (home.click(0)) {
                 button.playPressSound(mc.soundHandler)
             }
+
             addOrRemoveTabButton -> if (addOrRemoveTabButton.click(0)) {
                 button.playPressSound(mc.soundHandler)
             }
+
             is TabButton -> if (button.onLeftClick()) {
                 button.playPressSound(mc.soundHandler)
             }
@@ -351,7 +390,8 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
         updateButtonVisibility()
     }
 
-    private fun addBookmark() = state.currentPage.takeIf { isTabAbsent(it) && tabButtons.size < maxTabs }?.also { state.bookmarks.add(it); tabButtons.add(createGuiTabButton(it)) }
+    private fun addBookmark() = state.currentPage.takeIf { isTabAbsent(it) && tabButtons.size < maxTabs }
+        ?.also { state.bookmarks.add(it); tabButtons.add(createGuiTabButton(it)) }
 
     private fun createGuiTabButton(tabPage: Page): TabButton =
         TabButton(tabPage, outerGui.roundedRight - 2 - 2 * guiTabWidth, outerGui.roundedTop, object : TabButtonReturn {
@@ -373,7 +413,8 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
                 return true
             }
 
-            override fun getColor(): Int = tabPage.color ?: cycleMinecraftColorId(freeColor).also { freeColor = it; tabPage.color = it }
+            override fun getColor(): Int =
+                tabPage.color ?: cycleMinecraftColorId(freeColor).also { freeColor = it; tabPage.color = it }
 
             override fun isPageActive(): Boolean = tabPage.pageEquals(state.currentPage)
         })
@@ -385,657 +426,14 @@ class GuiGuideBook(private val state: ItemGuideBook.GuideBookState) : GuiScreen(
     }
 
     private fun drawTitle() {
-        lpFontRenderer.zLevel = GuideBookConstants.Z_TITLE_BUTTONS
-        lpFontRenderer.drawCenteredString(state.currentPage.title, floor(width / 2.0f), outerGui.y0 + (innerGui.y0 - outerGui.y0 - lpFontRenderer.getFontHeight()) / 2.0f, MinecraftColor.WHITE.colorCode, EnumSet.of(TextFormat.Shadow), 1.0f)
-        lpFontRenderer.zLevel = GuideBookConstants.Z_TEXT
+        LPGuiDrawer.lpFontRenderer.drawCenteredString(
+            state.currentPage.title,
+            floor(width / 2.0f),
+            outerGui.y0 + (innerGui.y0 - outerGui.y0 - LPGuiDrawer.lpFontRenderer.getFontHeight()) / 2.0f,
+            MinecraftColor.WHITE.colorCode,
+            EnumSet.of(TextFormat.Shadow),
+            1.0f
+        )
     }
 
-    private fun drawGui() {
-        Minecraft.getMinecraft().renderEngine.bindTexture(GuideBookConstants.guiBookTexture)
-        GlStateManager.enableBlend()
-        GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-        GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f)
-        val tessellator = Tessellator.getInstance()
-        val bufferBuilder = tessellator.buffer
-        bufferBuilder.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR)
-        // Background
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x0,
-            y0 = innerGui.y0,
-            x1 = innerGui.x1,
-            y1 = innerGui.y1,
-            z = GuideBookConstants.Z_BACKGROUND,
-            u0 = backgroundFrameTexture.roundedLeft,
-            v0 = backgroundFrameTexture.roundedTop,
-            u1 = backgroundFrameTexture.roundedRight,
-            v1 = backgroundFrameTexture.roundedBottom
-        )
-        // Corners: TopLeft, TopRight, BottomLeft & BottomRight
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = outerGui.x0,
-            y0 = outerGui.y0,
-            x1 = innerGui.x0 + guiShadowThickness,
-            y1 = innerGui.y0 + guiShadowThickness,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = outerFrameTexture.roundedLeft,
-            v0 = outerFrameTexture.roundedTop,
-            u1 = innerFrameTexture.roundedLeft,
-            v1 = innerFrameTexture.roundedTop
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x1 - guiShadowThickness,
-            y0 = outerGui.y0,
-            x1 = outerGui.x1,
-            y1 = innerGui.y0 + guiShadowThickness,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = innerFrameTexture.roundedRight,
-            v0 = outerFrameTexture.roundedTop,
-            u1 = outerFrameTexture.roundedRight,
-            v1 = innerFrameTexture.roundedTop
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = outerGui.x0,
-            y0 = innerGui.y1 - guiShadowThickness,
-            x1 = innerGui.x0 + guiShadowThickness,
-            y1 = outerGui.y1,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = outerFrameTexture.roundedLeft,
-            v0 = innerFrameTexture.roundedBottom,
-            u1 = innerFrameTexture.roundedLeft,
-            v1 = outerFrameTexture.roundedBottom
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x1 - guiShadowThickness,
-            y0 = innerGui.y1 - guiShadowThickness,
-            x1 = outerGui.x1,
-            y1 = outerGui.y1,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = innerFrameTexture.roundedRight,
-            v0 = innerFrameTexture.roundedBottom,
-            u1 = outerFrameTexture.roundedRight,
-            v1 = outerFrameTexture.roundedBottom
-        )
-        // Edges: Top, Bottom, Left & Right
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x0 + guiShadowThickness,
-            y0 = outerGui.y0,
-            x1 = innerGui.x1 - guiShadowThickness,
-            y1 = innerGui.y0 + guiShadowThickness,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = innerFrameTexture.roundedLeft,
-            v0 = outerFrameTexture.roundedTop,
-            u1 = innerFrameTexture.roundedRight,
-            v1 = innerFrameTexture.roundedTop
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x0 + guiShadowThickness,
-            y0 = innerGui.y1 - guiShadowThickness,
-            x1 = innerGui.x1 - guiShadowThickness,
-            y1 = outerGui.y1,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = innerFrameTexture.roundedLeft,
-            v0 = innerFrameTexture.roundedBottom,
-            u1 = innerFrameTexture.roundedRight,
-            v1 = outerFrameTexture.roundedBottom
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = outerGui.x0,
-            y0 = innerGui.y0 + guiShadowThickness,
-            x1 = innerGui.x0 + guiShadowThickness,
-            y1 = innerGui.y1 - guiShadowThickness,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = outerFrameTexture.roundedLeft,
-            v0 = innerFrameTexture.roundedTop,
-            u1 = innerFrameTexture.roundedLeft,
-            v1 = innerFrameTexture.roundedBottom
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = innerGui.x1 - guiShadowThickness,
-            y0 = innerGui.y0 + guiShadowThickness,
-            x1 = outerGui.x1,
-            y1 = innerGui.y1 - guiShadowThickness,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = innerFrameTexture.roundedRight,
-            v0 = innerFrameTexture.roundedTop,
-            u1 = outerFrameTexture.roundedRight,
-            v1 = innerFrameTexture.roundedBottom
-        )
-        // Slider Separator
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = sliderSeparator.x0,
-            y0 = sliderSeparator.y0 - 1,
-            x1 = sliderSeparator.x1,
-            y1 = sliderSeparator.y0,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = sliderSeparatorTexture.roundedLeft,
-            v0 = sliderSeparatorTexture.roundedTop - 1,
-            u1 = sliderSeparatorTexture.roundedRight,
-            v1 = sliderSeparatorTexture.roundedTop
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = sliderSeparator.x0,
-            y0 = sliderSeparator.y0,
-            x1 = sliderSeparator.x1,
-            y1 = sliderSeparator.y1,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = sliderSeparatorTexture.roundedLeft,
-            v0 = sliderSeparatorTexture.roundedTop,
-            u1 = sliderSeparatorTexture.roundedRight,
-            v1 = sliderSeparatorTexture.roundedBottom
-        )
-        putTexturedRectangle(
-            bufferBuilder = bufferBuilder,
-            x0 = sliderSeparator.x0,
-            y0 = sliderSeparator.y1,
-            x1 = sliderSeparator.x1,
-            y1 = sliderSeparator.y1 + 1,
-            z = GuideBookConstants.Z_FRAME,
-            u0 = sliderSeparatorTexture.roundedLeft,
-            v0 = sliderSeparatorTexture.roundedBottom,
-            u1 = sliderSeparatorTexture.roundedRight,
-            v1 = sliderSeparatorTexture.roundedBottom + 1
-        )
-        tessellator.draw()
-        GlStateManager.disableBlend()
-    }
-
-    companion object {
-        val lpFontRenderer = LPFontRenderer.get("ter-u12n")
-
-        fun drawSliderButton(body: Rectangle, texture: Rectangle) {
-            val z = GuideBookConstants.Z_TITLE_BUTTONS
-            val bufferBuilder = startBuffer()
-            putTexturedRectangle(
-                bufferBuilder,
-                body.x0,
-                body.y0,
-                body.x1,
-                body.y0 + 2,
-                z,
-                texture.roundedLeft,
-                texture.roundedTop,
-                texture.roundedRight,
-                texture.roundedTop + 2
-            )
-            putTexturedRectangle(
-                bufferBuilder,
-                body.x0,
-                body.y0 + 2,
-                body.x1,
-                body.y1 - 2,
-                z,
-                texture.roundedLeft,
-                texture.roundedTop + 2,
-                texture.roundedRight,
-                texture.roundedBottom - 2,
-                MinecraftColor.WHITE.colorCode
-            )
-            putTexturedRectangle(
-                bufferBuilder,
-                body.x0,
-                body.y1 - 2,
-                body.x1,
-                body.y1,
-                z,
-                texture.roundedLeft,
-                texture.roundedBottom - 2,
-                texture.roundedRight,
-                texture.roundedBottom
-            )
-            drawBuffer()
-        }
-
-        /**
-         * Draws a rectangle in which the given texture will be stretched to the given sized. This method assumes the bound texture is 256x256 in size.
-         * @param x0            left x position of desired rectangle.
-         * @param y0            top y position of desired rectangle.
-         * @param x1            right position of desired rectangle.
-         * @param y1            bottom position of desired rectangle.
-         * @param z             z position of desired rectangle.
-         * @param x0            left correspondent texture position.
-         * @param y0            top correspondent texture position.
-         * @param x1            right correspondent texture position.
-         * @param y1            bottom correspondent texture position.
-         */
-        fun drawStretchingRectangle(x0: Float, y0: Float, x1: Float, y1: Float, z: Float, u0: Int, v0: Int, u1: Int, v1: Int, blend: Boolean) {
-            drawStretchingRectangle(x0, y0, x1, y1, z, u0, v0, u1, v1, blend, MinecraftColor.WHITE.colorCode)
-        }
-
-        fun drawStretchingRectangle(rectangle: Rectangle, z: Float, texture: Rectangle, blend: Boolean, color: Int) {
-            drawStretchingRectangle(rectangle.x0, rectangle.y0, rectangle.x1, rectangle.y1, z, texture.roundedLeft, texture.roundedTop, texture.roundedRight, texture.roundedBottom, blend, color)
-        }
-
-        /**
-         * Draws a rectangle in which the given texture will be repeated to the given size it. This method assumes the bound texture is 256x256 in size.
-         * @param x0            left x position of desired rectangle.
-         * @param y0            top y position of desired rectangle.
-         * @param x1            right position of desired rectangle.
-         * @param y1            bottom position of desired rectangle.
-         * @param z             z position of desired rectangle.
-         * @param x0            left correspondent texture position.
-         * @param y0            top correspondent texture position.
-         * @param x1            right correspondent texture position.
-         * @param y1            bottom correspondent texture position.
-         */
-        private fun drawStretchingRectangle(x0: Float, y0: Float, x1: Float, y1: Float, z: Float, u0: Int, v0: Int, u1: Int, v1: Int, blend: Boolean, color: Int) {
-            Minecraft.getMinecraft().renderEngine.bindTexture(GuideBookConstants.guiBookTexture)
-            // Four vertices of square following order: TopLeft, TopRight, BottomLeft, BottomRight
-            if (blend) GlStateManager.enableBlend()
-            if (blend) GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-            val tessellator = Tessellator.getInstance()
-            val bufferBuilder = tessellator.buffer
-            bufferBuilder.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR)
-            putTexturedRectangle(bufferBuilder, x0, y0, x1, y1, z, u0, v0, u1, v1, color)
-            tessellator.draw()
-            if (blend) GlStateManager.disableBlend()
-        }
-
-        private fun putTexturedImage(bufferBuilder: BufferBuilder, x0: Float, y0: Float, x1: Float, y1: Float, z: Float, uw: Int, vh: Int, u0: Int, v0: Int, u1: Int, v1: Int) {
-            val atlasWidthScale = 1 / uw.toDouble()
-            val atlasHeightScale = 1 / vh.toDouble()
-            val u0S = u0 * atlasWidthScale
-            val v0S = v0 * atlasHeightScale
-            val u1S = u1 * atlasWidthScale
-            val v1S = v1 * atlasHeightScale
-            bufferBuilder.pos(x0, y1, z).tex(u0S, v1S).endVertex()
-            bufferBuilder.pos(x1, y1, z).tex(u1S, v1S).endVertex()
-            bufferBuilder.pos(x1, y0, z).tex(u1S, v0S).endVertex()
-            bufferBuilder.pos(x0, y0, z).tex(u0S, v0S).endVertex()
-        }
-
-        /**
-         * Adds a textured rectangle to the given buffer. This method assumes the bound texture is 256x256 in size.
-         * @param bufferBuilder buffer that needs to be initialized before it is given to this method;
-         * @param area          defines position and size of the desired rectangle;
-         * @param textureArea   defines position and size of the desired rectangle's texture;
-         * @param z             defines z level of the desired rectangle.
-         */
-        private fun putTexturedRectangle(bufferBuilder: BufferBuilder, area: Rectangle, textureArea: Rectangle, z: Float) {
-            putTexturedRectangle(bufferBuilder, area.x0, area.y0, area.x1, area.y1, z, textureArea.roundedLeft, textureArea.roundedTop, textureArea.roundedRight, textureArea.roundedBottom)
-        }
-
-        private fun putTexturedRectangle(bufferBuilder: BufferBuilder, x0: Float, y0: Float, x1: Float, y1: Float, z: Float, u0: Int, v0: Int, u1: Int, v1: Int) {
-            putTexturedRectangle(bufferBuilder, x0, y0, x1, y1, z, u0, v0, u1, v1, MinecraftColor.WHITE.colorCode)
-        }
-
-        /**
-         * Adds a textured rectangle to the given buffer. This method assumes the bound texture is 256x256 in size.
-         * @param bufferBuilder buffer that needs to be initialized before it is given to this method;
-         * @param x0            left x position of desired rectangle;
-         * @param y0            top y position of desired rectangle;
-         * @param x1            right position of desired rectangle;
-         * @param y1            bottom position of desired rectangle;
-         * @param z             z position of desired rectangle;
-         * @param x0            left correspondent texture position;
-         * @param y0            top correspondent texture position;
-         * @param x1            right correspondent texture position;
-         * @param y1            bottom correspondent texture position.
-         */
-        private fun putTexturedRectangle(bufferBuilder: BufferBuilder, x0: Float, y0: Float, x1: Float, y1: Float, z: Float, u0: Int, v0: Int, u1: Int, v1: Int, color: Int) {
-            val r = color.red()
-            val g = color.green()
-            val b = color.blue()
-            val a = color.alpha()
-            // Scaled
-            val u0S = u0 * GuideBookConstants.ATLAS_WIDTH_SCALE
-            val v0S = v0 * GuideBookConstants.ATLAS_HEIGHT_SCALE
-            val u1S = u1 * GuideBookConstants.ATLAS_WIDTH_SCALE
-            val v1S = v1 * GuideBookConstants.ATLAS_HEIGHT_SCALE
-            // Four vertices of square following order: TopLeft, TopRight, BottomLeft, BottomRight
-            bufferBuilder.pos(x0, y1, z).tex(u0S, v1S).color(r, g, b, a).endVertex()
-            bufferBuilder.pos(x1, y1, z).tex(u1S, v1S).color(r, g, b, a).endVertex()
-            bufferBuilder.pos(x1, y0, z).tex(u1S, v0S).color(r, g, b, a).endVertex()
-            bufferBuilder.pos(x0, y0, z).tex(u0S, v0S).color(r, g, b, a).endVertex()
-        }
-
-        /**
-         * Draws a Tile of size btn, with a specific border.
-         * @param btn       defines the size and position of where to draw the tile;
-         * @param z         defines the z height of the drawn tile;
-         * @param isEnabled defines whether or not the tile is enabled, if it isn't it can't be hovered and the texture is darker;
-         * @param isHovered defines whether or not the tile is being hovered, this will make the like have a blue tint;
-         * @param color     color to apply to the whole tile.
-         */
-        fun drawRectangleTile(btn: Rectangle, visibleArea: Rectangle, z: Float, isEnabled: Boolean, isHovered: Boolean, color: Int) {
-            // Tile drawing constants
-            val btnBackgroundUv = Rectangle(64, 32, 32, 32)
-            val btnBorderUv = Rectangle(0, 64, 16, 16)
-            val btnBorderWidth = 2
-            Minecraft.getMinecraft().renderEngine.bindTexture(GuideBookConstants.guiBookTexture)
-            GlStateManager.color(color.redF(), color.greenF(), color.blueF(), 1.0f)
-            val tessellator = Tessellator.getInstance()
-            val bufferBuilder = tessellator.buffer
-            bufferBuilder.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR)
-            val uvOffsetModifier = (if (isHovered) 1 else 0) * if (isEnabled) 1 else 2
-            val vOffset = uvOffsetModifier * btnBorderUv.roundedHeight
-            val uOffset = uvOffsetModifier * btnBackgroundUv.roundedWidth
-            //
-            val visibleBtn = visibleArea.translated(0, -2).grow(0, 4).overlap(btn)
-            // Fill: Middle
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0 + btnBorderWidth,
-                y0 = visibleBtn.y0 + btnBorderWidth,
-                x1 = visibleBtn.x1 - btnBorderWidth,
-                y1 = visibleBtn.y1 - btnBorderWidth,
-                z = z,
-                u0 = btnBackgroundUv.roundedLeft,
-                v0 = btnBackgroundUv.roundedTop + uOffset,
-                u1 = btnBackgroundUv.roundedRight,
-                v1 = btnBackgroundUv.roundedBottom + uOffset,
-                MinecraftColor.WHITE.colorCode
-            )
-
-            // Corners: TopLeft, TopRight, BottomLeft & BottomRight
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0,
-                y0 = visibleBtn.y0,
-                x1 = visibleBtn.x0 + btnBorderWidth,
-                y1 = visibleBtn.y0 + btnBorderWidth,
-                z = z,
-                u0 = btnBorderUv.roundedLeft,
-                v0 = btnBorderUv.roundedTop + vOffset,
-                u1 = btnBorderUv.roundedLeft + btnBorderWidth,
-                v1 = btnBorderUv.roundedTop + btnBorderWidth + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x1 - btnBorderWidth,
-                y0 = visibleBtn.y0,
-                x1 = visibleBtn.x1,
-                y1 = visibleBtn.y0 + btnBorderWidth,
-                z = z,
-                u0 = btnBorderUv.roundedRight - btnBorderWidth,
-                v0 = btnBorderUv.roundedTop + vOffset,
-                u1 = btnBorderUv.roundedRight,
-                v1 = btnBorderUv.roundedTop + btnBorderWidth + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0,
-                y0 = visibleBtn.y1 - btnBorderWidth,
-                x1 = visibleBtn.x0 + btnBorderWidth,
-                y1 = visibleBtn.y1,
-                z = z,
-                u0 = btnBorderUv.roundedLeft,
-                v0 = btnBorderUv.roundedBottom - btnBorderWidth + vOffset,
-                u1 = btnBorderUv.roundedLeft + btnBorderWidth,
-                v1 = btnBorderUv.roundedBottom + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x1 - btnBorderWidth,
-                y0 = visibleBtn.y1 - btnBorderWidth,
-                x1 = visibleBtn.x1,
-                y1 = visibleBtn.y1,
-                z = z,
-                u0 = btnBorderUv.roundedRight - btnBorderWidth,
-                v0 = btnBorderUv.roundedBottom - btnBorderWidth + vOffset,
-                u1 = btnBorderUv.roundedRight,
-                v1 = btnBorderUv.roundedBottom + vOffset
-            )
-            // Edges: Top, Bottom, Left & Right
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0 + btnBorderWidth,
-                y0 = visibleBtn.y0,
-                x1 = visibleBtn.x1 - btnBorderWidth,
-                y1 = visibleBtn.y0 + btnBorderWidth,
-                z = z,
-                u0 = btnBorderUv.roundedLeft + btnBorderWidth,
-                v0 = btnBorderUv.roundedTop + vOffset,
-                u1 = btnBorderUv.roundedRight - btnBorderWidth,
-                v1 = btnBorderUv.roundedTop + btnBorderWidth + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0 + btnBorderWidth,
-                y0 = visibleBtn.y1 - btnBorderWidth,
-                x1 = visibleBtn.x1 - btnBorderWidth,
-                y1 = visibleBtn.y1,
-                z = z,
-                u0 = btnBorderUv.roundedLeft + btnBorderWidth,
-                v0 = btnBorderUv.roundedBottom - btnBorderWidth + vOffset,
-                u1 = btnBorderUv.roundedRight - btnBorderWidth,
-                v1 = btnBorderUv.roundedBottom + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x0,
-                y0 = visibleBtn.y0 + btnBorderWidth,
-                x1 = visibleBtn.x0 + btnBorderWidth,
-                y1 = visibleBtn.y1 - btnBorderWidth,
-                z = z,
-                u0 = btnBorderUv.roundedLeft,
-                v0 = btnBorderUv.roundedTop + btnBorderWidth + vOffset,
-                u1 = btnBorderUv.roundedLeft + btnBorderWidth,
-                v1 = btnBorderUv.roundedBottom - btnBorderWidth + vOffset
-            )
-            putTexturedRectangle(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleBtn.x1 - btnBorderWidth,
-                y0 = visibleBtn.y0 + btnBorderWidth,
-                x1 = visibleBtn.x1,
-                y1 = visibleBtn.y1 - btnBorderWidth,
-                z = z,
-                u0 = btnBorderUv.roundedRight - btnBorderWidth,
-                v0 = btnBorderUv.roundedTop + btnBorderWidth + vOffset,
-                u1 = btnBorderUv.roundedRight,
-                v1 = btnBorderUv.roundedBottom - btnBorderWidth + vOffset
-            )
-            tessellator.draw()
-            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f)
-        }
-
-        /**
-         * Draws a stylized tooltip at the specified position, and clamps to the edges (to be tested).
-         * @param text  text to be displayed in the tooltip;
-         * @param x     x position at the center of the tooltip, in case no clamping needs to be done;
-         * @param y     y position of the top of the tooltip;
-         * @param z     z position of the tooltip.
-         */
-        fun drawBoxedString(text: String, x: Int, y: Int, z: Float, horizontalAlign: HorizontalAlignment, verticalAlign: VerticalAlignment) {
-            val outlineThickness = 4
-            val horizontalPadding = 2
-            val verticalPadding = 1
-            val width = lpFontRenderer.getStringWidth(text) + 2 * horizontalPadding
-            val height = lpFontRenderer.getFontHeight() + 2 * verticalPadding
-            val outerArea = Rectangle(
-                width = width + 2 * outlineThickness,
-                height = height + 2 * outlineThickness
-            )
-            outerArea.setPos(
-                newX = when (horizontalAlign) {
-                    HorizontalAlignment.CENTER -> x - outerArea.roundedWidth / 2
-                    HorizontalAlignment.LEFT -> x
-                    HorizontalAlignment.RIGHT -> x - outerArea.roundedWidth
-                },
-                newY = when (verticalAlign) {
-                    VerticalAlignment.CENTER -> y - outerArea.roundedHeight / 2
-                    VerticalAlignment.TOP -> y
-                    VerticalAlignment.BOTTOM -> y - outerArea.roundedHeight
-                })
-            val screen = Rectangle(Minecraft.getMinecraft().currentScreen!!.width, Minecraft.getMinecraft().currentScreen!!.height)
-            if (outerArea.x0 < 0) outerArea.translate(translateX = -outerArea.x0)
-            if (outerArea.x1 > screen.roundedWidth) outerArea.translate(translateX = screen.roundedWidth - outerArea.x1)
-            if (outerArea.y0 < 0) outerArea.translate(translateY = -outerArea.y0)
-            if (outerArea.y1 > screen.roundedHeight) outerArea.translate(translateY = screen.roundedHeight - outerArea.y1)
-            val innerArea = Rectangle(width, height).translated(outerArea).translated(outlineThickness, outlineThickness)
-            val outerAreaTexture = Rectangle(112, 32, 16, 16)
-            val innerAreaTexture = Rectangle(116, 36, 8, 8)
-            GlStateManager.pushMatrix()
-            lpFontRenderer.zLevel += z
-            lpFontRenderer.drawString(text, innerArea.x0 + horizontalPadding, innerArea.y0 + verticalPadding, defaultDrawableState.color, defaultDrawableState.format, 1.0f)
-            lpFontRenderer.zLevel -= z
-            GlStateManager.enableAlpha()
-            val bufferBuilder = startBuffer()
-            putTexturedRectangle(bufferBuilder, innerArea, innerAreaTexture, z)
-            // Corners: TopLeft, TopRight, BottomLeft & BottomRight
-            putTexturedRectangle(bufferBuilder, outerArea.x0, outerArea.y0, innerArea.x0, innerArea.y0, z, outerAreaTexture.roundedLeft, outerAreaTexture.roundedTop, innerAreaTexture.roundedLeft, innerAreaTexture.roundedTop)
-            putTexturedRectangle(bufferBuilder, innerArea.x1, outerArea.y0, outerArea.x1, innerArea.y0, z, innerAreaTexture.roundedRight, outerAreaTexture.roundedTop, outerAreaTexture.roundedRight, innerAreaTexture.roundedTop)
-            putTexturedRectangle(bufferBuilder, outerArea.x0, innerArea.y1, innerArea.x0, outerArea.y1, z, outerAreaTexture.roundedLeft, innerAreaTexture.roundedBottom, innerAreaTexture.roundedLeft, outerAreaTexture.roundedBottom)
-            putTexturedRectangle(bufferBuilder, innerArea.x1, innerArea.y1, outerArea.x1, outerArea.y1, z, innerAreaTexture.roundedRight, innerAreaTexture.roundedBottom, outerAreaTexture.roundedRight, outerAreaTexture.roundedBottom)
-            // Edges: Top, Bottom, Left & Right
-            putTexturedRectangle(bufferBuilder, innerArea.x0, outerArea.y0, innerArea.x1, innerArea.y0, z, innerAreaTexture.roundedLeft, outerAreaTexture.roundedTop, innerAreaTexture.roundedRight, innerAreaTexture.roundedTop)
-            putTexturedRectangle(bufferBuilder, innerArea.x0, innerArea.y1, innerArea.x1, outerArea.y1, z, innerAreaTexture.roundedLeft, innerAreaTexture.roundedBottom, innerAreaTexture.roundedRight, outerAreaTexture.roundedBottom)
-            putTexturedRectangle(bufferBuilder, outerArea.x0, innerArea.y0, innerArea.x0, innerArea.y1, z, outerAreaTexture.roundedLeft, innerAreaTexture.roundedTop, innerAreaTexture.roundedLeft, innerAreaTexture.roundedBottom)
-            putTexturedRectangle(bufferBuilder, innerArea.x1, innerArea.y0, outerArea.x1, innerArea.y1, z, innerAreaTexture.roundedRight, innerAreaTexture.roundedTop, outerAreaTexture.roundedRight, innerAreaTexture.roundedBottom)
-            drawBuffer()
-            GlStateManager.disableAlpha()
-            GlStateManager.popMatrix()
-        }
-
-        private fun startBuffer(): BufferBuilder {
-            Minecraft.getMinecraft().renderEngine.bindTexture(GuideBookConstants.guiBookTexture)
-            // Four vertices of square following order: TopLeft, TopRight, BottomLeft, BottomRight
-            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f)
-            val tessellator = Tessellator.getInstance()
-            val bufferBuilder = tessellator.buffer
-            bufferBuilder.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR)
-            return bufferBuilder
-        }
-
-        private fun drawBuffer() {
-            Tessellator.getInstance().draw()
-        }
-
-        /**
-         * Draws a colored horizontal line.
-         * @param x0        starting position of the line
-         * @param x1        ending position of the line
-         * @param y         y axis of the line.
-         * @param thickness thickness of the line which will be added below the y axis.
-         * @param color     color of the line formatted as #aarrggbb integer.
-         */
-        fun drawHorizontalLine(x0: Float, x1: Float, y: Float, z: Float, thickness: Int, color: Int) {
-            val r = color.red()
-            val g = color.green()
-            val b = color.blue()
-            val a = color.alpha()
-            drawLine { bufferBuilder ->
-                bufferBuilder.pos(x0, y + thickness, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x1, y + thickness, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x1, y, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x0, y, z).color(r, g, b, a).endVertex()
-            }
-        }
-
-        /**
-         * Draws a colored vertical line.
-         * @param x         line's x axis
-         * @param y0        line's starting position
-         * @param y1        line's ending position
-         * @param thickness line's thickness which will be added to the right of the x axis
-         * @param color     color of the line formatted as #aarrggbb integer.
-         */
-        private fun drawVerticalLine(x: Float, y0: Float, y1: Float, z: Float, thickness: Int, color: Int) {
-            val r = color.red()
-            val g = color.green()
-            val b = color.blue()
-            val a = color.alpha()
-            drawLine { bufferBuilder ->
-                bufferBuilder.pos(x, y1, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x + thickness, y1, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x + thickness, y0, z).color(r, g, b, a).endVertex()
-                bufferBuilder.pos(x, y0, z).color(r, g, b, a).endVertex()
-            }
-        }
-
-        private fun drawLine(bufferAction: (BufferBuilder) -> Unit) {
-            val tessellator = Tessellator.getInstance()
-            val bufferBuilder = tessellator.buffer
-            GlStateManager.disableTexture2D()
-            bufferBuilder.begin(7, DefaultVertexFormats.POSITION_COLOR)
-
-            bufferAction(bufferBuilder)
-
-            tessellator.draw()
-            GlStateManager.enableTexture2D()
-            GlStateManager.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA)
-            GlStateManager.disableBlend()
-        }
-
-        /**
-         * Draws a small plus sign next to the mouse cursor.
-         * Can be used to indicate there is more information to show about the hovered element when shift is pressed.
-         * @param mouseX    cursor x position.
-         * @param mouseY    cursor y position.
-         */
-        fun drawLinkIndicator(mouseX: Int, mouseY: Int) {
-            drawVerticalLine(mouseX + 5f, mouseY - 5f, mouseY - 2f, GuideBookConstants.Z_TOOLTIP, 1, MinecraftColor.WHITE.colorCode)
-            drawHorizontalLine(mouseX + 4f, mouseX + 7f, mouseY - 4f, GuideBookConstants.Z_TOOLTIP, 1, MinecraftColor.WHITE.colorCode)
-        }
-
-        fun drawImage(imageBody: Rectangle, visibleArea: Rectangle, image: ResourceLocation) {
-            val visibleImageBody = imageBody.overlap(visibleArea)
-            val xOffset = min(imageBody.x0 - visibleArea.x0, 0f)
-            val yOffset = min(imageBody.y0 - visibleArea.y0, 0f)
-            val visibleImageTexture = Rectangle.fromRectangle(visibleImageBody)
-                .resetPos()
-                .translate(xOffset, -yOffset)
-            GlStateManager.pushMatrix()
-            Minecraft.getMinecraft().textureManager.bindTexture(image)
-            GlStateManager.color(1.0f, 1.0f, 1.0f, 1.0f)
-            val tessellator = Tessellator.getInstance()
-            val bufferBuilder = tessellator.buffer
-            bufferBuilder.begin(7, DefaultVertexFormats.POSITION_TEX)
-            putTexturedImage(
-                bufferBuilder = bufferBuilder,
-                x0 = visibleImageBody.x0,
-                y0 = visibleImageBody.y0,
-                x1 = visibleImageBody.x1,
-                y1 = visibleImageBody.y1,
-                z = GuideBookConstants.Z_TEXT,
-                uw = imageBody.roundedWidth,
-                vh = imageBody.roundedHeight,
-                u0 = visibleImageTexture.roundedLeft,
-                v0 = visibleImageTexture.roundedTop,
-                u1 = visibleImageTexture.roundedRight,
-                v1 = visibleImageTexture.roundedBottom,
-            )
-            tessellator.draw()
-            GlStateManager.popMatrix()
-        }
-
-        fun drawRectangleOutline(rect: Rectangle, z: Float, color: Int) {
-            GlStateManager.pushMatrix()
-            GlStateManager.disableAlpha()
-            GlStateManager.disableBlend()
-            drawHorizontalLine(rect.x0 - 1, rect.x1, rect.y0 - 1, z, 1, color) // TOP
-            drawHorizontalLine(rect.x0, rect.x1 + 1, rect.y1, z, 1, color) // BOTTOM
-            drawVerticalLine(rect.x0 - 1, rect.y0, rect.y1 + 1, z, 1, color) // LEFT
-            drawVerticalLine(rect.x1, rect.y0 - 1, rect.y1, z, 1, color) // RIGHT
-            GlStateManager.enableAlpha()
-            GlStateManager.enableBlend()
-            GlStateManager.popMatrix()
-        }
-    }
-
-    enum class HorizontalAlignment {
-        CENTER,
-        LEFT,
-        RIGHT;
-    }
-
-    enum class VerticalAlignment {
-        CENTER,
-        TOP,
-        BOTTOM;
-    }
 }
-
-fun BufferBuilder.pos(x: Float, y: Float, z: Float): BufferBuilder = pos(x.toDouble(), y.toDouble(), z.toDouble())
-
-fun BufferBuilder.tex(u: Float, v: Float): BufferBuilder = tex(u.toDouble(), v.toDouble())

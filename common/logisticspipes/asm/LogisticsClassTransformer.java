@@ -530,7 +530,7 @@ public class LogisticsClassTransformer implements IClassTransformer {
 		}
 		MethodVisitor mv;
 		{
-			mv = node.visitMethod(Opcodes.ACC_PUBLIC, "getObject", "()Llogisticspipes/asm/te/LPTileEntityObject;", null, null);
+			mv = node.visitMethod(Opcodes.ACC_PUBLIC, "getLPTileEntityObject", "()Llogisticspipes/asm/te/LPTileEntityObject;", null, null);
 			mv.visitCode();
 			Label l0 = new Label();
 			mv.visitLabel(l0);
@@ -543,7 +543,7 @@ public class LogisticsClassTransformer implements IClassTransformer {
 			mv.visitEnd();
 		}
 		{
-			mv = node.visitMethod(Opcodes.ACC_PUBLIC, "setObject", "(Llogisticspipes/asm/te/LPTileEntityObject;)V", null, null);
+			mv = node.visitMethod(Opcodes.ACC_PUBLIC, "setLPTileEntityObject", "(Llogisticspipes/asm/te/LPTileEntityObject;)V", null, null);
 			mv.visitCode();
 			Label l0 = new Label();
 			mv.visitLabel(l0);

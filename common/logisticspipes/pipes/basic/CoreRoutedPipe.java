@@ -850,7 +850,7 @@ public abstract class CoreRoutedPipe extends CoreUnroutedPipe
 	}
 
 	@CCCommand(description = "Returns the Internal LogisticsModule for this pipe")
-	public abstract LogisticsModule getLogisticsModule();
+	public abstract @Nullable LogisticsModule getLogisticsModule();
 
 	@Override
 	public final boolean blockActivated(EntityPlayer entityplayer) {
@@ -1676,8 +1676,8 @@ public abstract class CoreRoutedPipe extends CoreUnroutedPipe
 	@Override
 	public CacheHolder getCacheHolder() {
 		if (cacheHolder == null) {
-			if (container instanceof ILPTEInformation && ((ILPTEInformation) container).getObject() != null) {
-				cacheHolder = ((ILPTEInformation) container).getObject().getCacheHolder();
+			if (container instanceof ILPTEInformation && ((ILPTEInformation) container).getLPTileEntityObject() != null) {
+				cacheHolder = ((ILPTEInformation) container).getLPTileEntityObject().getCacheHolder();
 			} else {
 				cacheHolder = new CacheHolder();
 			}

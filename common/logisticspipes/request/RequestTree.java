@@ -120,7 +120,7 @@ public class RequestTree extends RequestTreeNode {
 			final CoreRoutedPipe secondExitPipe = o2.destination.getPipe();
 			if (firstExitPipe instanceof IHavePriority) {
 				if (secondExitPipe instanceof IHavePriority) {
-					c = ((IHavePriority) secondExitPipe).getPriority() - ((IHavePriority) firstExitPipe).getPriority();
+					c = Integer.compare(((IHavePriority) secondExitPipe).getPriority(), ((IHavePriority) firstExitPipe).getPriority());
 					if (c != 0) {
 						return c;
 					}
@@ -133,10 +133,12 @@ public class RequestTree extends RequestTreeNode {
 				}
 			}
 
-			//GetLoadFactor*64 should be an integer anyway.
-			c = (int) Math.floor(firstExitPipe.getLoadFactor() * 64) - (int) Math.floor(secondExitPipe.getLoadFactor() * 64);
-			if (distanceWeight != 0) {
-				c += (int) (Math.floor(o1.distanceToDestination * 64) - (int) Math.floor(o2.distanceToDestination * 64)) * distanceWeight;
+			if (distanceWeight < 1/64.0) {
+				c = Double.compare(firstExitPipe.getLoadFactor(), secondExitPipe.getLoadFactor());
+			} else {
+				c = Double.compare(
+						(firstExitPipe.getLoadFactor() * 64) + (o1.distanceToDestination * distanceWeight),
+						(secondExitPipe.getLoadFactor() * 64) + (o2.distanceToDestination * distanceWeight));
 			}
 			return c;
 		}
@@ -148,13 +150,12 @@ public class RequestTree extends RequestTreeNode {
 		RequestTree tree = new RequestTree(new ItemResource(new ItemIdentifierStack(ItemIdentifier.get(Item.getItemFromBlock(Blocks.STONE), 0, null), 0), requester), null, requestFlags, info);
 		boolean isDone = true;
 		for (ItemIdentifierStack stack : items) {
-			ItemIdentifier item = stack.getItem();
-			Integer count = messages.get(item);
+			ItemResource req = new ItemResource(stack, requester);
+			Integer count = messages.get(req);
 			if (count == null) {
 				count = 0;
 			}
 			count += stack.getStackSize();
-			ItemResource req = new ItemResource(stack, requester);
 			messages.put(req, count);
 			RequestTree node = new RequestTree(req, tree, requestFlags, info);
 			isDone = isDone && node.isDone();

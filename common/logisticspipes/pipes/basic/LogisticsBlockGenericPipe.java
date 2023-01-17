@@ -285,7 +285,7 @@ public class LogisticsBlockGenericPipe extends LPMicroblockBlock {
 				return null;
 			}
 			boolean changed = false;
-			if (worldCache.getBlockState(posCache) != null || worldCache.getBlockState(posCache).getBlock() != LPBlocks.pipe) {
+			if (worldCache.getBlockState(posCache).getBlock() != LPBlocks.pipe) {
 				worldCache.setBlockState(posCache, LPBlocks.pipe.getDefaultState());
 				changed = true;
 			}
@@ -341,12 +341,12 @@ public class LogisticsBlockGenericPipe extends LPMicroblockBlock {
 	}
 
 	@Override
-	public void addCollisionBoxToList(IBlockState state, World world, @Nonnull BlockPos pos, @Nonnull AxisAlignedBB entityBox, @Nonnull List<AxisAlignedBB> collidingBoxes, @Nullable Entity entity, boolean isActualState) {
+	public void addCollisionBoxToList(@Nonnull IBlockState state, World world, @Nonnull BlockPos pos, @Nonnull AxisAlignedBB entityBox, @Nonnull List<AxisAlignedBB> collidingBoxes, @Nullable Entity entity, boolean isActualState) {
 		TileEntity te = world.getTileEntity(pos);
 		if (te instanceof LogisticsTileGenericPipe) {
 			LogisticsTileGenericPipe tile = (LogisticsTileGenericPipe) te;
 			CoreUnroutedPipe pipe = tile.pipe;
-			if (pipe instanceof PipeBlockRequestTable) {
+			if (pipe != null && pipe.isPipeBlock()) {
 				addCollisionBoxToList(pos, entityBox, collidingBoxes, Block.FULL_BLOCK_AABB);
 				return;
 			}
@@ -369,7 +369,7 @@ public class LogisticsBlockGenericPipe extends LPMicroblockBlock {
 	@SideOnly(Side.CLIENT)
 	public AxisAlignedBB getSelectedBoundingBox(IBlockState state, World world, @Nonnull BlockPos pos) {
 		TileEntity tile = world.getTileEntity(pos);
-		if (tile instanceof LogisticsTileGenericPipe && ((LogisticsTileGenericPipe) tile).pipe instanceof PipeBlockRequestTable) {
+		if (tile instanceof LogisticsTileGenericPipe && ((LogisticsTileGenericPipe) tile).isPipeBlock()) {
 			return new AxisAlignedBB((double) pos.getX() + 0, (double) pos.getY() + 0, (double) pos.getZ() + 0,
 					(double) pos.getX() + 1, (double) pos.getY() + 1, (double) pos.getZ() + 1);
 		}
@@ -389,7 +389,7 @@ public class LogisticsBlockGenericPipe extends LPMicroblockBlock {
 	@Override
 	public RayTraceResult collisionRayTrace(IBlockState state, World world, @Nonnull BlockPos pos, @Nonnull Vec3d start, @Nonnull Vec3d end) {
 		TileEntity tile = world.getTileEntity(pos);
-		if (tile instanceof LogisticsTileGenericPipe && ((LogisticsTileGenericPipe) tile).pipe instanceof PipeBlockRequestTable) {
+		if (tile instanceof LogisticsTileGenericPipe && ((LogisticsTileGenericPipe) tile).isPipeBlock()) {
 			Vec3d vec3d = start.subtract(pos.getX(), pos.getY(), pos.getZ());
 			Vec3d vec3d1 = end.subtract(pos.getX(), pos.getY(), pos.getZ());
 			RayTraceResult raytraceresult = FULL_BLOCK_AABB.calculateIntercept(vec3d, vec3d1);
@@ -630,7 +630,7 @@ public class LogisticsBlockGenericPipe extends LPMicroblockBlock {
 		TileEntity tile = world.getTileEntity(pos);
 
 		if (tile instanceof LogisticsTileGenericPipe) {
-			if (((LogisticsTileGenericPipe) tile).pipe instanceof PipeBlockRequestTable) {
+			if (((LogisticsTileGenericPipe) tile).isPipeBlock()) {
 				return true;
 			}
 		}

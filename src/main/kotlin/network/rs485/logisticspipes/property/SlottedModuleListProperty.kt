@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021  RS485
+ * Copyright (c) 2022  RS485
  *
  * "LogisticsPipes" is distributed under the terms of the Minecraft Mod Public
  * License 1.0.1, or MMPL. Please check the contents of the license located in
@@ -8,7 +8,7 @@
  * This file can instead be distributed under the license terms of the
  * MIT license:
  *
- * Copyright (c) 2021  RS485
+ * Copyright (c) 2022  RS485
  *
  * This MIT license was reworded to only match this file. If you use the regular
  * MIT license in your project, replace this copyright notice (this line and any
@@ -43,9 +43,6 @@ import logisticspipes.modules.LogisticsModule
 import net.minecraft.item.Item
 import net.minecraft.nbt.NBTTagCompound
 
-const val SLOT_INDEX_KEY = "slotted_module.slot"
-const val MODULE_NAME_KEY = "slotted_module.name"
-
 class SlottedModuleListProperty(slots: Int, override val tagKey: String) :
     ListProperty<SlottedModule>(MutableList(slots) { SlottedModule(it, null) }) {
 
@@ -54,14 +51,17 @@ class SlottedModuleListProperty(slots: Int, override val tagKey: String) :
     override fun readSingleFromNBT(tag: NBTTagCompound, key: String): SlottedModule {
         val slottedModuleTag = tag.getCompoundTag(key)
         val slot = slottedModuleTag.getInteger(SLOT_INDEX_KEY)
-        return list.getOrElse(slot) {
-            val moduleName = if (slottedModuleTag.hasKey(MODULE_NAME_KEY)) {
-                slottedModuleTag.getString(MODULE_NAME_KEY)
-            } else null
-            val moduleResource = moduleName?.let { LPItems.modules[it] }
-            val module = moduleResource?.let { Item.REGISTRY.getObject(moduleResource) as? ItemModule }
-            SlottedModule(slot = slot, module = module?.getModule(null, null, null))
-        }.also { it.module?.readFromNBT(slottedModuleTag) }
+        val moduleName = if (slottedModuleTag.hasKey(MODULE_NAME_KEY)) {
+            slottedModuleTag.getString(MODULE_NAME_KEY)
+        } else null
+        val moduleResource = moduleName?.let { LPItems.modules[it] }
+        val itemModule = moduleResource?.let { Item.REGISTRY.getObject(moduleResource) as? ItemModule }
+        // FIXME: move module creation to before readFromNBT
+        val logisticsModule = itemModule?.getModule(null, null, null)
+        return logisticsModule?.let { module ->
+            module.readFromNBT(slottedModuleTag)
+            SlottedModule(slot = slot, module = module).also { list[slot] = it }
+        } ?: list[slot]
     }
 
     override fun writeSingleToNBT(tag: NBTTagCompound, key: String, value: SlottedModule) {
@@ -81,8 +81,4 @@ class SlottedModuleListProperty(slots: Int, override val tagKey: String) :
     fun set(slot: Int, module: LogisticsModule) = set(slot, SlottedModule(slot, module))
     fun clear(slot: Int) = set(slot, SlottedModule(slot, null))
 
-}
-
-data class SlottedModule(val slot: Int, val module: LogisticsModule?) {
-    fun isEmpty() = module == null
 }

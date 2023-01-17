@@ -3,18 +3,25 @@ package logisticspipes.renderer;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.model.ModelSign;
+import net.minecraft.client.renderer.BufferBuilder;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.ItemModelMesher;
 import net.minecraft.client.renderer.RenderItem;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
@@ -45,27 +52,25 @@ import network.rs485.logisticspipes.world.DoubleCoordinates;
 
 public class LogisticsRenderPipe extends TileEntitySpecialRenderer<LogisticsTileGenericPipe> {
 
+	private static final ExecutorService pool = Executors.newFixedThreadPool(1);
 	private static final int LIQUID_STAGES = 40;
 	private static final int MAX_ITEMS_TO_RENDER = 10;
 	private static final ResourceLocation SIGN = new ResourceLocation("textures/entity/sign.png");
 	public static LogisticsNewRenderPipe secondRenderer = new LogisticsNewRenderPipe();
 	public static LogisticsNewPipeItemBoxRenderer boxRenderer = new LogisticsNewPipeItemBoxRenderer();
 	public static ClientConfiguration config = LogisticsPipes.getClientPlayerConfig();
-	private static ItemStackRenderer itemRenderer = new ItemStackRenderer(0, 0, 0, false, false);
-	private ModelSign modelSign;
+	private static final ItemStackRenderer itemRenderer = new ItemStackRenderer(0, 0, 0, false, false);
+	private final ModelSign modelSign = new ModelSign();
 
 	public LogisticsRenderPipe() {
 		super();
-		modelSign = new ModelSign();
 		modelSign.signStick.showModel = false;
 	}
 
 	@Override
-	public void render(LogisticsTileGenericPipe tileentity, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
-		boolean inHand = false;
-		if (tileentity == null && x == 0 && y == 0 && z == 0) {
-			inHand = true;
-		} else if (tileentity.pipe == null) {
+	public void render(@Nullable LogisticsTileGenericPipe tileentity, double x, double y, double z, float partialTicks, int destroyStage, float alpha) {
+		boolean inHand = (tileentity == null || (x == 0 && y == 0 && z == 0));
+		if (!inHand && tileentity.pipe == null) {
 			return;
 		}
 
@@ -262,9 +267,9 @@ public class LogisticsRenderPipe extends TileEntitySpecialRenderer<LogisticsTile
 	}
 
 	private void renderPipeSigns(CoreRoutedPipe pipe, double x, double y, double z, float partialTickTime) {
-		if (!pipe.getPipeSigns().isEmpty()) {
-			List<Pair<EnumFacing, IPipeSign>> list = pipe.getPipeSigns();
-			for (Pair<EnumFacing, IPipeSign> pair : list) {
+		List<Pair<EnumFacing, IPipeSign>> pipeSigns = pipe.getPipeSigns();
+		if (pipe.container != null && !pipeSigns.isEmpty()) {
+			for (Pair<EnumFacing, IPipeSign> pair : pipeSigns) {
 				if (pipe.container.renderState.pipeConnectionMatrix.isConnected(pair.getValue1())) {
 					continue;
 				}
@@ -279,25 +284,25 @@ public class LogisticsRenderPipe extends TileEntitySpecialRenderer<LogisticsTile
 						break;
 					case NORTH:
 						GL11.glRotatef(0, 0.0F, 1.0F, 0.0F);
-						if (needDistance(list)) {
+						if (needDistance(pipeSigns)) {
 							GL11.glTranslatef(0.0F, 0.0F, -0.15F);
 						}
 						break;
 					case SOUTH:
 						GL11.glRotatef(-180, 0.0F, 1.0F, 0.0F);
-						if (needDistance(list)) {
+						if (needDistance(pipeSigns)) {
 							GL11.glTranslatef(0.0F, 0.0F, -0.15F);
 						}
 						break;
 					case EAST:
 						GL11.glRotatef(-90, 0.0F, 1.0F, 0.0F);
-						if (needDistance(list)) {
+						if (needDistance(pipeSigns)) {
 							GL11.glTranslatef(0.0F, 0.0F, -0.15F);
 						}
 						break;
 					case WEST:
 						GL11.glRotatef(90, 0.0F, 1.0F, 0.0F);
-						if (needDistance(list)) {
+						if (needDistance(pipeSigns)) {
 							GL11.glTranslatef(0.0F, 0.0F, -0.15F);
 						}
 						break;
@@ -324,9 +329,79 @@ public class LogisticsRenderPipe extends TileEntitySpecialRenderer<LogisticsTile
 		modelSign.renderSign();
 		GL11.glPopMatrix();
 
-		GL11.glTranslatef(-0.32F, 0.5F * signScale + 0.08F, 0.07F * signScale);
 
-		type.render(pipe, this);
+		boolean needsUpdating = type.doesFrameBufferNeedUpdating(pipe, this);
+		Framebuffer fbo = type.getMCFrameBufferForSign();
+
+		if(fbo != null) {
+			if(needsUpdating) {
+				pool.submit(() -> {
+					Minecraft.getMinecraft().addScheduledTask(() -> {
+						fbo.framebufferClear();
+						GL11.glPushAttrib(GL11.GL_ENABLE_BIT);
+						GL11.glMatrixMode(GL11.GL_MODELVIEW);
+						GL11.glPushMatrix();
+						GL11.glMatrixMode(GL11.GL_PROJECTION);
+						GL11.glPushMatrix();
+
+						// setup modelview matrix
+						GlStateManager.clearColor(1.0f, 1.0f, 1.0f, 0.5f);
+						GlStateManager.clear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+						GL11.glMatrixMode(GL11.GL_MODELVIEW);
+						GL11.glLoadIdentity();
+						GL11.glMatrixMode(GL11.GL_PROJECTION);
+						GL11.glLoadIdentity();
+						GL11.glDepthFunc(GL11.GL_LESS);
+
+						GL11.glOrtho(0.0D, 1.0, 1.0, 0.0, -1, 1);
+						GL11.glDisable(GL11.GL_DEPTH_TEST);
+
+						fbo.bindFramebuffer(true);
+						resetStateManager();
+
+						GL11.glRotatef(-180.0F, 1.0F, 0.0F, 0.0F);
+						GL11.glTranslatef(0.16F, -0.41F, 0.0F);
+						GL11.glScalef(1.0F, 1.0F, -1/0.001F);
+
+						type.render(pipe, LogisticsRenderPipe.this);
+						fbo.unbindFramebuffer();
+
+						GL11.glMatrixMode(GL11.GL_PROJECTION);
+						GL11.glPopMatrix();
+						GL11.glMatrixMode(GL11.GL_MODELVIEW);
+						GL11.glPopMatrix();
+						GL11.glPopAttrib();
+
+						resetStateManager();
+						GL11.glDepthFunc(GL11.GL_LEQUAL);
+					});
+				});
+			}
+			GL11.glTranslatef(-0.5F, -0.19F, 0.07F * signScale);
+			Tessellator tessellator = Tessellator.getInstance();
+			BufferBuilder bufferbuilder = tessellator.getBuffer();
+			GlStateManager.enableTexture2D();
+			fbo.bindFramebufferTexture();
+			bufferbuilder.begin(7, DefaultVertexFormats.POSITION_TEX);
+			bufferbuilder.pos(0, 0, 0.001).tex(0, 0).endVertex();
+			bufferbuilder.pos(1, 0, 0.001).tex(1, 0).endVertex();
+			bufferbuilder.pos(1, 1, 0.001).tex(1, 1).endVertex();
+			bufferbuilder.pos(0, 1, 0.001).tex(0, 1).endVertex();
+			tessellator.draw();
+			fbo.unbindFramebufferTexture();
+		} else {
+			GL11.glTranslatef(-0.32F, 0.5F * signScale + 0.08F, 0.07F * signScale);
+			type.render(pipe, this);
+		}
+	}
+
+	private void resetStateManager() {
+		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+		GlStateManager.color(0.0F, 0.0F, 0.0F, 1.0F);
+		GlStateManager.depthMask(false);
+		GlStateManager.depthMask(true);
+		GlStateManager.disableDepth();
+		GlStateManager.enableDepth();
 	}
 
 	public void renderItemStackOnSign(@Nonnull ItemStack itemstack) {
@@ -393,7 +468,7 @@ public class LogisticsRenderPipe extends TileEntitySpecialRenderer<LogisticsTile
 			if (renderer.getStringWidth(sum.toString() + name.charAt(i) + "...") < 90) {
 				sum.append(name.charAt(i));
 			} else {
-				return sum.toString() + "...";
+				return sum + "...";
 			}
 		}
 		return sum.toString();

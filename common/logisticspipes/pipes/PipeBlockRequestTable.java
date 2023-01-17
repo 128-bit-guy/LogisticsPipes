@@ -660,4 +660,9 @@ public class PipeBlockRequestTable extends PipeItemsRequestLogistics implements 
 		if (fake.world == worldEvent.getWorld())
 			fake = null;
 	}
+
+	@Override
+	public boolean isPipeBlock() {
+		return true;
+	}
 }

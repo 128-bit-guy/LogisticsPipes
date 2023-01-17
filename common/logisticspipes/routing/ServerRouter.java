@@ -161,15 +161,6 @@ public class ServerRouter implements IRouter, Comparable<ServerRouter> {
 			}
 		}
 
-		@Override
-		public void pipeModified(DoubleCoordinates pos) {
-			if (connectionNeedsChecking == 0) {
-				connectionNeedsChecking = 1;
-			}
-			if (LogisticsPipes.isDEBUG()) {
-				causedBy.add(pos);
-			}
-		}
 	};
 	private Set<List<ITileEntityChangeListener>> listenedPipes = new HashSet<>();
 	private Set<LPTileEntityObject> oldTouchedPipes = new HashSet<>();
@@ -1056,9 +1047,9 @@ public class ServerRouter implements IRouter, Comparable<ServerRouter> {
 	}
 
 	private void ensureChangeListenerAttachedToPipe(CoreRoutedPipe pipe) {
-		if (pipe.container instanceof ILPTEInformation && ((ILPTEInformation) pipe.container).getObject() != null) {
-			if (!((ILPTEInformation) pipe.container).getObject().changeListeners.contains(localChangeListener)) {
-				((ILPTEInformation) pipe.container).getObject().changeListeners.add(localChangeListener);
+		if (pipe.container instanceof ILPTEInformation && ((ILPTEInformation) pipe.container).getLPTileEntityObject() != null) {
+			if (!((ILPTEInformation) pipe.container).getLPTileEntityObject().changeListeners.contains(localChangeListener)) {
+				((ILPTEInformation) pipe.container).getLPTileEntityObject().changeListeners.add(localChangeListener);
 			}
 		}
 	}

@@ -12,6 +12,7 @@ import java.util.Map.Entry;
 import javax.annotation.Nonnull;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.client.renderer.block.model.BakedQuad;
@@ -36,7 +37,6 @@ import logisticspipes.LPConstants;
 import logisticspipes.LogisticsPipes;
 import logisticspipes.interfaces.ITubeOrientation;
 import logisticspipes.pipefxhandlers.EntityModelFX;
-import logisticspipes.pipes.PipeBlockRequestTable;
 import logisticspipes.pipes.PipeItemsBasicLogistics;
 import logisticspipes.pipes.basic.CoreUnroutedPipe;
 import logisticspipes.pipes.basic.LogisticsTileGenericPipe;
@@ -588,14 +588,9 @@ public class LogisticsNewRenderPipe implements IHighlightPlacementRenderer {
 
 	public void renderTileEntityAt(LogisticsTileGenericPipe pipeTile, double x, double y, double z, float partialTickTime, double distance) {
 		boolean inHand = false;
-		if (pipeTile == null) {
-		}
-		if (pipeTile.pipe instanceof PipeBlockRequestTable) {
-			return;
-		}
-		if (pipeTile.pipe == null) {
-			return;
-		}
+		if (pipeTile == null) return;
+		if (pipeTile.pipe == null) return;
+		if (pipeTile.pipe.isPipeBlock()) return;
 		PipeRenderState renderState = pipeTile.renderState;
 
 		if (renderState.renderLists != null && renderState.renderLists.values().stream().anyMatch(GLRenderList::isInvalid)) {
@@ -745,13 +740,10 @@ public class LogisticsNewRenderPipe implements IHighlightPlacementRenderer {
 						double[] bounds = { Block.FULL_BLOCK_AABB.minY, Block.FULL_BLOCK_AABB.minZ, Block.FULL_BLOCK_AABB.minX, Block.FULL_BLOCK_AABB.maxY, Block.FULL_BLOCK_AABB.maxZ, Block.FULL_BLOCK_AABB.maxX };
 						if (pipeTile.getWorld() != null) { //This can be null in some cases now !!!
 							DoubleCoordinates coords = CoordinateUtils.add(new DoubleCoordinates((TileEntity) pipeTile), dir);
-							Block block = coords.getBlock(pipeTile.getWorld());
-							AxisAlignedBB bb = block.getCollisionBoundingBox(coords.getBlockState(pipeTile.getWorld()), pipeTile.getWorld(), coords.getBlockPos());
+							IBlockState blockState = coords.getBlockState(pipeTile.getWorld());
+							AxisAlignedBB bb = blockState.getCollisionBoundingBox(pipeTile.getWorld(), coords.getBlockPos());
 							if (bb == null) bb = Block.FULL_BLOCK_AABB;
 							bounds = new double[] { bb.minY, bb.minZ, bb.minX, bb.maxY, bb.maxZ, bb.maxX };
-							if (SimpleServiceLocator.enderIOProxy.isItemConduit(coords.getTileEntity(pipeTile.getWorld()), dir.getOpposite()) || SimpleServiceLocator.enderIOProxy.isFluidConduit(coords.getTileEntity(pipeTile.getWorld()), dir.getOpposite())) {
-								bounds = new double[] { 0.0249D, 0.0249D, 0.0249D, 0.9751D, 0.9751D, 0.9751D };
-							}
 						}
 						double bound = bounds[dir.ordinal() / 2 + (dir.ordinal() % 2 == 0 ? 3 : 0)];
 						ScaleObject key = new ScaleObject(model, bound);
@@ -885,8 +877,10 @@ public class LogisticsNewRenderPipe implements IHighlightPlacementRenderer {
 		if (pipeTile.getWorld() != null) { // This can be null in some cases now !!!
 			for (EnumFacing dir : EnumFacing.VALUES) {
 				DoubleCoordinates pos = CoordinateUtils.add(new DoubleCoordinates((TileEntity) pipeTile), dir);
-				Block blockSide = pos.getBlock(pipeTile.getWorld());
-				if (blockSide == null || !blockSide.isSideSolid(pos.getBlockState(pipeTile.getWorld()), pipeTile.getWorld(), pos.getBlockPos(), dir.getOpposite()) || renderState.pipeConnectionMatrix.isConnected(dir)) {
+				IBlockState blockState = pos.getBlockState(pipeTile.getWorld());
+				if (blockState.getBlock().isAir(blockState, pipeTile.getWorld(), pos.getBlockPos()) ||
+						!blockState.isSideSolid(pipeTile.getWorld(), pos.getBlockPos(), dir.getOpposite()) ||
+						renderState.pipeConnectionMatrix.isConnected(dir)) {
 					mountCanidates.removeIf(mount -> mount.dir == dir);
 				} else {
 					solidSides[dir.ordinal()] = true;

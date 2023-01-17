@@ -38,8 +38,8 @@
 package network.rs485.logisticspipes.gui.guidebook
 
 import net.minecraft.client.Minecraft
+import network.rs485.logisticspipes.gui.LPGuiDrawer
 import network.rs485.logisticspipes.util.math.Rectangle
-import kotlin.math.floor
 import kotlin.math.roundToInt
 
 private const val minimumHeight = 16
@@ -52,15 +52,11 @@ class SliderButton(x: Int, y: Int, width: Int, railHeight: Int, private var prog
     private var initialMouseYOffset: Int = 0
     private var hoveredBar: Boolean = false
 
-    init {
-        zLevel = GuideBookConstants.Z_TITLE_BUTTONS
-    }
-
     override fun drawButton(mc: Minecraft, mouseX: Int, mouseY: Int, partialTicks: Float) {
         if (!visible) return
         hoveredBar = sliderButton.translated(body).contains(mouseX, mouseY)
         hovered = body.contains(mouseX, mouseY)
-        GuiGuideBook.drawSliderButton(sliderButton.translated(body), texture.translated(0, getHoverState(hoveredBar) * texture.roundedHeight))
+        LPGuiDrawer.drawSliderButton(sliderButton.translated(body), texture.translated(0, getHoverState(hoveredBar) * texture.roundedHeight))
         mouseDragged(mc, mouseX, mouseY)
     }
 

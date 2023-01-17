@@ -113,8 +113,10 @@ public class LogisticsBlockModel implements IModel {
 			@Nonnull
 			public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {
 				if (side == null) {
-					if (quads.isEmpty()) {
-						quads.addAll(LogisticsRenderPipe.secondRenderer.getQuadsFromRenderList(generateBlockRenderList(state, inactiveT, activeT), format, true));
+					synchronized (quads) {
+						if (quads.isEmpty()) {
+							quads.addAll(LogisticsRenderPipe.secondRenderer.getQuadsFromRenderList(generateBlockRenderList(state, inactiveT, activeT), format, true));
+						}
 					}
 					return quads;
 				} else {
@@ -152,7 +154,13 @@ public class LogisticsBlockModel implements IModel {
 			@Override
 			@Nonnull
 			public Pair<? extends IBakedModel, Matrix4f> handlePerspective(@Nonnull ItemCameraTransforms.TransformType cameraTransformType) {
-				return PerspectiveMapWrapper.handlePerspective(this, SimpleServiceLocator.cclProxy.getDefaultBlockState(), cameraTransformType);
+				IModelState defaultBlockState = SimpleServiceLocator.cclProxy.getDefaultBlockState();
+				if (defaultBlockState == null) {
+					// no special camera transform is better than crashing
+					return net.minecraftforge.client.ForgeHooksClient.handlePerspective(this, cameraTransformType);
+				} else {
+
+					return PerspectiveMapWrapper.handlePerspective(this, defaultBlockState, cameraTransformType);				}
 			}
 		};
 	}

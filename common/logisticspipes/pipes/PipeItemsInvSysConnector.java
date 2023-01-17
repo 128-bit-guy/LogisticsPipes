@@ -346,7 +346,7 @@ public class PipeItemsInvSysConnector extends CoreRoutedPipe implements IChannel
 	}
 
 	@Override
-	public LogisticsModule getLogisticsModule() {
+	public @Nullable LogisticsModule getLogisticsModule() {
 		return null;
 	}
 
